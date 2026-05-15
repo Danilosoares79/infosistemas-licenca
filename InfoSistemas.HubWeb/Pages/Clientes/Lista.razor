@@ -1,0 +1,96 @@
+@page "/clientes"
+@inject LicencaApiService Api
+@inject NavigationManager Nav
+@using InfoSistemas.LicencaAPI.DTOs
+
+<div class="page-header">
+    <h2>Clientes</h2>
+    <button class="btn-primary" @onclick='() => Nav.NavigateTo("/clientes/novo")'>+ Novo Cliente</button>
+</div>
+
+@if (carregando)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <div class="filtros">
+        <input placeholder="Buscar..." @oninput="Filtrar" class="hub-input" />
+        <select @onchange="FiltrarStatus" class="hub-select">
+            <option value="">Todos</option>
+            <option value="ATIVO">Ativos</option>
+            <option value="BLOQUEADO">Bloqueados</option>
+            <option value="EXPIRADO">Expirados</option>
+        </select>
+    </div>
+
+    <table class="hub-table">
+        <thead>
+            <tr>
+                <th>Razao Social</th>
+                <th>CNPJ</th>
+                <th>Plano</th>
+                <th>Desktops</th>
+                <th>Mobile</th>
+                <th>Vencimento</th>
+                <th>Status</th>
+                <th>Chave</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in filtrados)
+            {
+                <tr>
+                    <td>@c.RazaoSocial</td>
+                    <td>@c.Cnpj</td>
+                    <td>@c.Plano</td>
+                    <td>@c.DesktopsAtivos / @c.MaxDesktops</td>
+                    <td>@c.MobileAtivos / @c.MaxMobile</td>
+                    <td class="@(c.DiasRestantes <= 5 ? "text-warning" : "") @(c.DiasRestantes < 0 ? "text-danger" : "")">
+                        @c.DataVencimento.ToString("dd/MM/yyyy")
+                        @if (c.DiasRestantes <= 5 && c.DiasRestantes >= 0)
+                        { <span class="badge badge-warning">@c.DiasRestantes d</span> }
+                    </td>
+                    <td><span class="badge @BadgeClass(c.Status)">@c.Status</span></td>
+                    <td><code class="chave">@c.Chave</code></td>
+                    <td><a href="/clientes/@c.Id" class="btn-link">Detalhes</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    bool carregando = true;
+    List<ClienteResumoDto> todos = [];
+    List<ClienteResumoDto> filtrados = [];
+    string textoBusca = "";
+    string statusFiltro = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        todos = await Api.ListarClientesAsync() ?? [];
+        Aplicar();
+        carregando = false;
+    }
+
+    void Filtrar(ChangeEventArgs e) { textoBusca = e.Value?.ToString() ?? ""; Aplicar(); }
+    void FiltrarStatus(ChangeEventArgs e) { statusFiltro = e.Value?.ToString() ?? ""; Aplicar(); }
+
+    void Aplicar() =>
+        filtrados = todos
+            .Where(c => (string.IsNullOrEmpty(statusFiltro) || c.Status == statusFiltro)
+                     && (string.IsNullOrEmpty(textoBusca)
+                         || c.RazaoSocial.Contains(textoBusca, StringComparison.OrdinalIgnoreCase)
+                         || c.Cnpj.Contains(textoBusca)))
+            .ToList();
+
+    static string BadgeClass(string status) => status switch
+    {
+        "ATIVO"     => "badge-green",
+        "BLOQUEADO" => "badge-red",
+        "EXPIRADO"  => "badge-orange",
+        _           => "badge-gray"
+    };
+}

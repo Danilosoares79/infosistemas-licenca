@@ -1,0 +1,81 @@
+@page "/financeiro/vencimentos"
+@inject LicencaApiService Api
+@using InfoSistemas.LicencaAPI.DTOs
+
+<div class="page-header">
+    <h2>Vencimentos</h2>
+    <div class="filtros">
+        <label>Proximos</label>
+        <select class="hub-select" @onchange="Mudar">
+            <option value="5">5 dias</option>
+            <option value="7" selected>7 dias</option>
+            <option value="15">15 dias</option>
+            <option value="30">30 dias</option>
+        </select>
+    </div>
+</div>
+
+@if (carregando)
+{
+    <p>Carregando...</p>
+}
+else if (lista?.Count == 0)
+{
+    <div class="empty-state">Nenhum vencimento nos proximos @dias dias.</div>
+}
+else
+{
+    <table class="hub-table">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>E-mail</th>
+                <th>Telefone</th>
+                <th>Vencimento</th>
+                <th>Dias Restantes</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var v in lista!)
+            {
+                <tr class="@RowClass(v.DiasRestantes)">
+                    <td>@v.RazaoSocial</td>
+                    <td>@v.Email</td>
+                    <td>@v.Fone</td>
+                    <td>@v.DataVencimento.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        <span class="badge @BadgeClass(v.DiasRestantes)">
+                            @(v.DiasRestantes < 0 ? "EXPIRADO" : $"{v.DiasRestantes} dias")
+                        </span>
+                    </td>
+                    <td><a href="/clientes/@v.ClienteId" class="btn-link">Renovar</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    bool carregando = true;
+    int dias = 7;
+    List<VencimentoAlertaDto>? lista;
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    async Task Mudar(ChangeEventArgs e)
+    {
+        dias = int.Parse(e.Value?.ToString() ?? "7");
+        await Carregar();
+    }
+
+    async Task Carregar()
+    {
+        carregando = true;
+        lista = await Api.VencimentosAsync(dias) ?? [];
+        carregando = false;
+    }
+
+    static string RowClass(int d) => d < 0 ? "row-expired" : d <= 2 ? "row-critical" : "row-warning";
+    static string BadgeClass(int d) => d < 0 ? "badge-red" : d <= 2 ? "badge-orange" : "badge-yellow";
+}

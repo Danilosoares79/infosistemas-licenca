@@ -1,0 +1,27 @@
+@inherits LayoutComponentBase
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>InfoSistemas Hub</title>
+    <link rel="stylesheet" href="css/hub.css"/>
+</head>
+<body>
+<div class="hub-layout">
+    <nav class="hub-nav">
+        <div class="hub-brand">
+            <span class="brand-icon">IS</span>
+            <span class="brand-name">InfoSistemas Hub</span>
+        </div>
+        <NavMenu />
+    </nav>
+    <main class="hub-main">
+        <div class="hub-content">
+            @Body
+        </div>
+    </main>
+</div>
+<script src="_framework/blazor.server.js"></script>
+</body>
+</html>

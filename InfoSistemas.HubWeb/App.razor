@@ -1,0 +1,9 @@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(InfoSistemas.HubWeb.Shared.MainLayout)" />
+    </Found>
+    <NotFound>
+        <h3>Pagina nao encontrada.</h3>
+        <a href="/">Voltar ao Dashboard</a>
+    </NotFound>
+</Router>

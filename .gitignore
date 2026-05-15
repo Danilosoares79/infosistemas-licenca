@@ -1,0 +1,10 @@
+.vs/
+*/bin/
+*/obj/
+*/publish/
+Instalador/Publish/
+Instalador/Output/
+*.user
+*.suo
+.DS_Store
+Thumbs.db

@@ -1,0 +1,81 @@
+@page "/"
+@inject LicencaApiService Api
+@using InfoSistemas.LicencaAPI.DTOs
+
+<h2>Dashboard</h2>
+
+@if (carregando)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <div class="cards-row">
+        <div class="card card-green">
+            <div class="card-value">@ativos</div>
+            <div class="card-label">Clientes Ativos</div>
+        </div>
+        <div class="card card-red">
+            <div class="card-value">@vencendo</div>
+            <div class="card-label">Vencendo em 5 dias</div>
+        </div>
+        <div class="card card-orange">
+            <div class="card-value">@bloqueados</div>
+            <div class="card-label">Bloqueados</div>
+        </div>
+        <div class="card card-gray">
+            <div class="card-value">@expirados</div>
+            <div class="card-label">Expirados</div>
+        </div>
+    </div>
+
+    @if (alertas?.Count > 0)
+    {
+        <div class="section">
+            <h3>Vencendo em breve</h3>
+            <table class="hub-table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>E-mail</th>
+                        <th>Telefone</th>
+                        <th>Vencimento</th>
+                        <th>Dias</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in alertas)
+                    {
+                        <tr class="@(a.DiasRestantes <= 0 ? "row-expired" : a.DiasRestantes <= 2 ? "row-critical" : "row-warning")">
+                            <td>@a.RazaoSocial</td>
+                            <td>@a.Email</td>
+                            <td>@a.Fone</td>
+                            <td>@a.DataVencimento.ToString("dd/MM/yyyy")</td>
+                            <td><strong>@a.DiasRestantes dias</strong></td>
+                            <td><a href="/clientes/@a.ClienteId" class="btn-link">Ver</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    bool carregando = true;
+    int ativos, vencendo, bloqueados, expirados;
+    List<VencimentoAlertaDto>? alertas;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var clientes = await Api.ListarClientesAsync() ?? [];
+        ativos     = clientes.Count(c => c.Status == "ATIVO");
+        bloqueados = clientes.Count(c => c.Status == "BLOQUEADO");
+        expirados  = clientes.Count(c => c.Status == "EXPIRADO");
+
+        alertas  = await Api.VencimentosAsync(5) ?? [];
+        vencendo = alertas.Count;
+        carregando = false;
+    }
+}

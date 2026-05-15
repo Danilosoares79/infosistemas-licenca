@@ -1,0 +1,153 @@
+@page "/clientes/novo"
+@page "/clientes/{Id:int}/editar"
+@inject LicencaApiService Api
+@inject NavigationManager Nav
+@using InfoSistemas.LicencaAPI.DTOs
+
+<h2>@(Id == 0 ? "Novo Cliente" : "Editar Cliente")</h2>
+
+<div class="form-card">
+    <div class="form-section">
+        <h3>Dados da Empresa</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Razao Social *</label>
+                <input class="hub-input" @bind="razao" placeholder="Razao Social" />
+            </div>
+            <div class="form-group">
+                <label>Nome Fantasia</label>
+                <input class="hub-input" @bind="fantasia" placeholder="Fantasia" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>CNPJ *</label>
+                <input class="hub-input" @bind="cnpj" placeholder="00.000.000/0001-00" />
+            </div>
+            <div class="form-group">
+                <label>E-mail</label>
+                <input class="hub-input" @bind="email" placeholder="contato@empresa.com" />
+            </div>
+            <div class="form-group">
+                <label>Telefone</label>
+                <input class="hub-input" @bind="fone" placeholder="(00) 00000-0000" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group flex-3">
+                <label>Endereco</label>
+                <input class="hub-input" @bind="endereco" placeholder="Rua, numero" />
+            </div>
+            <div class="form-group flex-2">
+                <label>Cidade</label>
+                <input class="hub-input" @bind="cidade" />
+            </div>
+            <div class="form-group">
+                <label>UF</label>
+                <input class="hub-input" @bind="uf" maxlength="2" style="width:60px" />
+            </div>
+            <div class="form-group">
+                <label>CEP</label>
+                <input class="hub-input" @bind="cep" placeholder="00000-000" />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Licenca e Plano</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Plano</label>
+                <select class="hub-select" @bind="plano">
+                    <option value="BASICO">Basico</option>
+                    <option value="PROFISSIONAL">Profissional</option>
+                    <option value="ENTERPRISE">Enterprise</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Max. Desktops</label>
+                <input class="hub-input" type="number" min="1" max="50" @bind="maxDesktops" style="width:80px" />
+            </div>
+            <div class="form-group">
+                <label>Max. Mobile (Garcom)</label>
+                <input class="hub-input" type="number" min="0" max="100" @bind="maxMobile" style="width:80px" />
+            </div>
+            <div class="form-group">
+                <label>Vencimento *</label>
+                <input class="hub-input" type="date" @bind="vencimento" />
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(erro))
+    {
+        <div class="alert alert-danger">@erro</div>
+    }
+    @if (!string.IsNullOrEmpty(sucesso))
+    {
+        <div class="alert alert-success">@sucesso</div>
+    }
+
+    <div class="form-actions">
+        <button class="btn-secondary" @onclick='() => Nav.NavigateTo("/clientes")'>Cancelar</button>
+        <button class="btn-primary" @onclick="Salvar" disabled="@salvando">
+            @(salvando ? "Salvando..." : "Salvar")
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    string razao = "", fantasia = "", cnpj = "", email = "", fone = "";
+    string endereco = "", cidade = "", uf = "", cep = "";
+    string plano = "PROFISSIONAL";
+    int maxDesktops = 1, maxMobile = 0;
+    DateTime vencimento = DateTime.Today.AddDays(30);
+    string erro = "", sucesso = "";
+    bool salvando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id > 0)
+        {
+            var c = await Api.ObterClienteAsync(Id);
+            if (c != null)
+            {
+                razao = c.RazaoSocial; fantasia = c.Fantasia; cnpj = c.Cnpj;
+                email = c.Email; plano = c.Plano;
+                maxDesktops = c.MaxDesktops; maxMobile = c.MaxMobile;
+                vencimento = c.DataVencimento;
+            }
+        }
+    }
+
+    async Task Salvar()
+    {
+        if (string.IsNullOrWhiteSpace(razao) || string.IsNullOrWhiteSpace(cnpj))
+        { erro = "Razao Social e CNPJ sao obrigatorios."; return; }
+
+        salvando = true; erro = ""; sucesso = "";
+        try
+        {
+            if (Id == 0)
+            {
+                var req = new CriarClienteRequest(razao, fantasia, cnpj, email, fone,
+                    endereco, cidade, uf, cep, plano, maxDesktops, maxMobile, vencimento);
+                var c = await Api.CriarClienteAsync(req);
+                sucesso = $"Cliente criado! Chave de licenca: {c?.Chave}";
+                await Task.Delay(2000);
+                Nav.NavigateTo($"/clientes/{c?.Id}");
+            }
+            else
+            {
+                var req = new AtualizarClienteRequest(razao, fantasia, email, fone,
+                    endereco, cidade, uf, cep, plano, maxDesktops, maxMobile);
+                await Api.AtualizarClienteAsync(Id, req);
+                sucesso = "Cliente atualizado com sucesso!";
+            }
+        }
+        catch (Exception ex) { erro = $"Erro: {ex.Message}"; }
+        finally { salvando = false; }
+    }
+}

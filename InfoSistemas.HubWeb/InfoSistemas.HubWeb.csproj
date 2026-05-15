@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>InfoSistemas.HubWeb</AssemblyName>
+    <RootNamespace>InfoSistemas.HubWeb</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Compartilha os DTOs da LicencaAPI sem precisar duplicar -->
+    <ProjectReference Include="..\InfoSistemas.LicencaAPI\InfoSistemas.LicencaAPI.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,17 @@
+@page "/_Host"
+@namespace InfoSistemas.HubWeb.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InfoSistemas Hub</title>
+    <base href="~/" />
+    <link rel="stylesheet" href="css/hub.css" />
+</head>
+<body>
+    <component type="typeof(InfoSistemas.HubWeb.App)" render-mode="ServerPrerendered" />
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>
