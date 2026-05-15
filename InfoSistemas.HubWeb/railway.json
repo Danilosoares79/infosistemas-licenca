@@ -2,10 +2,10 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "InfoSistemas.LicencaAPI/Dockerfile"
+    "dockerfilePath": "InfoSistemas.HubWeb/Dockerfile"
   },
   "deploy": {
-    "startCommand": "dotnet InfoSistemas.LicencaAPI.dll",
+    "startCommand": "dotnet InfoSistemas.HubWeb.dll",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
