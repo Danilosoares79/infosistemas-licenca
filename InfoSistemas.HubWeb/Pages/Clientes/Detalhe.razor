@@ -124,13 +124,12 @@ else
     [Parameter] public int Id { get; set; }
 
     ClienteResumoDto? cliente;
-    ClienteFullDto? cliente_full;
+    ClienteResumoDto? cliente_full;
     List<DispositivoDto>? dispositivos;
     int diasRenovar = 30;
     string responsavelRenovar = "", motivoBloqueio = "", mensagem = "";
     bool processando, erro;
 
-    // DTO interno para campos extras
     record ClienteFullDto(string? MotivoBloqueio);
 
     protected override async Task OnInitializedAsync() => await Carregar();
