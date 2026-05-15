@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using InfoSistemas.LicencaAPI.DTOs;
+using InfoSistemas.HubWeb.DTOs;
 
 namespace InfoSistemas.HubWeb.Services;
 

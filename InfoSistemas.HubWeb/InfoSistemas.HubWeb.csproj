@@ -9,8 +9,4 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.0" />
   </ItemGroup>
-  <ItemGroup>
-    <!-- Compartilha os DTOs da LicencaAPI sem precisar duplicar -->
-    <ProjectReference Include="..\InfoSistemas.LicencaAPI\InfoSistemas.LicencaAPI.csproj" />
-  </ItemGroup>
 </Project>

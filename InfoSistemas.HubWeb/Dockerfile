@@ -5,17 +5,10 @@ EXPOSE 5200
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY ["InfoSistemas.HubWeb/InfoSistemas.HubWeb.csproj", "InfoSistemas.HubWeb/"]
-COPY ["InfoSistemas.LicencaAPI/InfoSistemas.LicencaAPI.csproj", "InfoSistemas.LicencaAPI/"]
-RUN dotnet restore "InfoSistemas.HubWeb/InfoSistemas.HubWeb.csproj"
+COPY ["InfoSistemas.HubWeb.csproj", "."]
+RUN dotnet restore "InfoSistemas.HubWeb.csproj"
 
-COPY ["InfoSistemas.HubWeb/", "InfoSistemas.HubWeb/"]
-COPY ["InfoSistemas.LicencaAPI/", "InfoSistemas.LicencaAPI/"]
-
-WORKDIR "/src/InfoSistemas.HubWeb"
-RUN dotnet build "InfoSistemas.HubWeb.csproj" -c Release -o /app/build
-
-FROM build AS publish
+COPY . .
 RUN dotnet publish "InfoSistemas.HubWeb.csproj" -c Release -o /app/publish
 
 FROM base AS final
