@@ -1,3 +1,4 @@
+// InfoSistemas HubWeb v6.0 - Build 2026-05-16
 using InfoSistemas.HubWeb.Services;
 
 var builder = WebApplication.CreateBuilder(args);
