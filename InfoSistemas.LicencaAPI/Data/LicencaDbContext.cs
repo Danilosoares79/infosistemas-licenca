@@ -5,12 +5,13 @@ namespace InfoSistemas.LicencaAPI.Data;
 
 public class LicencaDbContext(DbContextOptions<LicencaDbContext> options) : DbContext(options)
 {
-    public DbSet<Cliente>     Clientes     => Set<Cliente>();
-    public DbSet<Licenca>     Licencas     => Set<Licenca>();
-    public DbSet<Dispositivo> Dispositivos => Set<Dispositivo>();
-    public DbSet<Renovacao>   Renovacoes   => Set<Renovacao>();
-    public DbSet<Pagamento>   Pagamentos   => Set<Pagamento>();
-    public DbSet<Usuario>     Usuarios     => Set<Usuario>();
+    public DbSet<Cliente>          Clientes          => Set<Cliente>();
+    public DbSet<Licenca>          Licencas          => Set<Licenca>();
+    public DbSet<Dispositivo>      Dispositivos      => Set<Dispositivo>();
+    public DbSet<Renovacao>        Renovacoes        => Set<Renovacao>();
+    public DbSet<Pagamento>        Pagamentos        => Set<Pagamento>();
+    public DbSet<Usuario>          Usuarios          => Set<Usuario>();
+    public DbSet<LicencaAtivacao>  LicencaAtivacoes  => Set<LicencaAtivacao>();
 
     protected override void OnModelCreating(ModelBuilder m)
     {
@@ -81,6 +82,19 @@ public class LicencaDbContext(DbContextOptions<LicencaDbContext> options) : DbCo
             e.Property(x => x.Email).HasMaxLength(150);
             e.Property(x => x.Perfil).HasMaxLength(20).HasDefaultValue("Admin");
             e.HasIndex(x => x.Login).IsUnique();
+        });
+
+        m.Entity<LicencaAtivacao>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ActivationToken).HasMaxLength(36).IsRequired(); // UUID
+            e.Property(x => x.MachineId).HasMaxLength(64);
+            e.HasIndex(x => x.ActivationToken).IsUnique();
+
+            e.HasOne(x => x.Cliente)
+             .WithMany()
+             .HasForeignKey(x => x.ClienteId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

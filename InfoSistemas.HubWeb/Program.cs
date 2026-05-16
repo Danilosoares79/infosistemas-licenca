@@ -31,6 +31,14 @@ builder.Services.AddHttpClient<UsuarioApiService>(c =>
         builder.Configuration["LicencaApi:AdminKey"] ?? "INFOSISTEMAS-ADMIN-KEY-2026");
 });
 
+// HttpClient simples para consulta de CNPJ na BrasilAPI (sem autenticacao)
+builder.Services.AddHttpClient("brasilapi", c =>
+{
+    c.BaseAddress = new Uri("https://brasilapi.com.br/");
+    c.DefaultRequestHeaders.Add("Accept", "application/json");
+    c.Timeout = TimeSpan.FromSeconds(10);
+});
+
 var app = builder.Build();
 app.UseStaticFiles();
 app.UseRouting();

@@ -268,7 +268,7 @@ public class LicencaService(LicencaDbContext db, IConfiguration cfg)
             pagamento.Observacao, pagamento.Responsavel, pagamento.DiasRenovados, pagamento.CriadoEm);
     }
 
-    // ── ARQUIVO .LIC (HMAC-SHA256 assinado) ──────────────────────────
+    // ── ARQUIVO .LIC (HMAC-SHA256 assinado + token de ativacao unica) ─
     public async Task<LicArquivoDto> GerarArquivoLicAsync(int clienteId)
     {
         var cliente = await db.Clientes
@@ -276,7 +276,21 @@ public class LicencaService(LicencaDbContext db, IConfiguration cfg)
             .FirstOrDefaultAsync(c => c.Id == clienteId)
             ?? throw new Exception("Cliente nao encontrado.");
 
-        // Dados que o PDV vai verificar offline
+        // Gerar token unico para esta emissao do .lic
+        // Este token so pode ativar 1 computador (vincula MachineId na primeira instalacao)
+        var activationToken = Guid.NewGuid().ToString();
+
+        db.LicencaAtivacoes.Add(new LicencaAtivacao
+        {
+            ClienteId       = clienteId,
+            ActivationToken = activationToken,
+            MachineId       = null,   // sera preenchido quando o PDV ativar
+            ActivadoEm      = null,
+            CriadoEm        = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        // Payload do .lic inclui o token de ativacao unica
         var payload = new
         {
             chave           = cliente.Licenca?.Chave ?? "",
@@ -287,7 +301,8 @@ public class LicencaService(LicencaDbContext db, IConfiguration cfg)
             maxMobile       = cliente.MaxMobile,
             dataVencimento  = cliente.DataVencimento.ToString("yyyy-MM-dd"),
             emitidoEm       = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            versao          = "2"
+            activationToken = activationToken,  // TOKEN UNICO - uso unico!
+            versao          = "3"
         };
 
         var json       = JsonSerializer.Serialize(payload);
@@ -295,14 +310,10 @@ public class LicencaService(LicencaDbContext db, IConfiguration cfg)
         var secretKey  = cfg["LicSecretKey"] ?? "INFOSISTEMAS-LIC-SECRET-2026";
         var keyBytes   = Encoding.UTF8.GetBytes(secretKey);
 
-        // Gera assinatura HMAC-SHA256
-        var hmac      = HMACSHA256.HashData(keyBytes, jsonBytes);
+        var hmac       = HMACSHA256.HashData(keyBytes, jsonBytes);
         var assinatura = Convert.ToBase64String(hmac);
+        var envelope   = Convert.ToBase64String(jsonBytes) + "." + assinatura;
 
-        // Envelope final: base64(json) + "." + assinatura
-        var envelope = Convert.ToBase64String(jsonBytes) + "." + assinatura;
-
-        // Nome do arquivo: InfoSistemas_Empresa-X.lic
         var nomeCliente = new string(cliente.RazaoSocial
             .Replace(" ", "-").Replace("/", "").Replace("\\", "")
             .Where(c2 => char.IsLetterOrDigit(c2) || c2 == '-' || c2 == '_').ToArray());
@@ -310,6 +321,99 @@ public class LicencaService(LicencaDbContext db, IConfiguration cfg)
 
         return new LicArquivoDto(nomeArquivo, envelope);
     }
+
+    // ── ATIVAR .LIC NA PRIMEIRA INSTALACAO DO PDV ────────────────────
+    /// <summary>
+    /// Chamado pelo PDV ao importar o arquivo .lic pela primeira vez.
+    /// Vincula o ActivationToken ao MachineId do computador.
+    /// A partir dai, o mesmo .lic nao pode mais ser usado em outro PC.
+    /// </summary>
+    public async Task<AtivarLicencaResponse> AtivarLicencaAsync(AtivarLicencaRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.ActivationToken) || string.IsNullOrWhiteSpace(req.MachineId))
+            return Falhou("Token de ativacao e MachineId sao obrigatorios.");
+
+        var ativacao = await db.LicencaAtivacoes
+            .Include(a => a.Cliente)
+                .ThenInclude(c => c!.Licenca)
+            .Include(a => a.Cliente)
+                .ThenInclude(c => c!.Dispositivos)
+            .FirstOrDefaultAsync(a => a.ActivationToken == req.ActivationToken);
+
+        if (ativacao == null)
+            return Falhou("Token de ativacao invalido. Verifique o arquivo .lic.");
+
+        var cliente = ativacao.Cliente;
+        if (cliente == null)
+            return Falhou("Cliente nao encontrado para este token.");
+
+        // Verificar se o token ja foi usado por OUTRO computador
+        if (ativacao.Ativado && ativacao.MachineId != req.MachineId)
+            return Falhou(
+                "Este arquivo .lic ja foi ativado em outro computador. " +
+                "Nao e possivel utilizar a mesma licenca em multiplos locais. " +
+                "Entre em contato com a InfoSistemas para obter um novo arquivo.");
+
+        // Se o token foi ativado pelo MESMO computador, retornar sucesso (reinstalacao)
+        if (ativacao.Ativado && ativacao.MachineId == req.MachineId)
+        {
+            // Reinstalacao no mesmo PC: permitido
+            return Sucesso(cliente, "Licenca reativada no mesmo computador.");
+        }
+
+        // Verificar status do cliente
+        if (cliente.Status == "BLOQUEADO")
+            return Falhou($"Licenca bloqueada. {cliente.MotivoBloqueio} Contate a InfoSistemas.");
+
+        var diasRestantes = (int)(cliente.DataVencimento.Date - DateTime.UtcNow.Date).TotalDays;
+        if (cliente.Status == "EXPIRADO" || diasRestantes < 0)
+            return Falhou("Licenca expirada. Contate a InfoSistemas para renovar.");
+
+        // Verificar limite de dispositivos
+        var ativos = cliente.Dispositivos.Count(d => d.Ativo && d.Tipo == req.Tipo);
+        var limite = req.Tipo == "DESKTOP" ? cliente.MaxDesktops : cliente.MaxMobile;
+        if (ativos >= limite)
+            return Falhou($"Limite de dispositivos atingido ({ativos}/{limite}). Contate a InfoSistemas.");
+
+        // PRIMEIRA ATIVACAO: vincular token ao MachineId
+        ativacao.MachineId  = req.MachineId;
+        ativacao.ActivadoEm = DateTime.UtcNow;
+
+        // Registrar o dispositivo se nao existir
+        var dispExistente = cliente.Dispositivos.FirstOrDefault(d => d.MachineId == req.MachineId);
+        if (dispExistente == null)
+        {
+            var nomeDisp = req.Tipo == "DESKTOP"
+                ? $"Desktop {ativos + 1}"
+                : $"Mobile {ativos + 1}";
+            db.Dispositivos.Add(new Dispositivo
+            {
+                ClienteId  = cliente.Id,
+                MachineId  = req.MachineId,
+                Tipo       = req.Tipo,
+                Nome       = nomeDisp,
+                AppVersion = req.AppVersion,
+                UltimoAcesso = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            dispExistente.UltimoAcesso = DateTime.UtcNow;
+            dispExistente.AppVersion   = req.AppVersion;
+        }
+
+        await db.SaveChangesAsync();
+        return Sucesso(cliente, "Licenca ativada com sucesso neste computador!");
+    }
+
+    private static AtivarLicencaResponse Falhou(string msg) =>
+        new(false, msg, null, null, null, null, null, 0, 0, null);
+
+    private static AtivarLicencaResponse Sucesso(Cliente c, string msg) =>
+        new(true, msg,
+            c.Licenca?.Chave, c.RazaoSocial, c.Fantasia, c.Cnpj, c.Plano,
+            c.MaxDesktops, c.MaxMobile,
+            c.DataVencimento.ToString("yyyy-MM-dd"));
 
     // ── Helpers ───────────────────────────────────────────────────────
     private static string GerarChave()

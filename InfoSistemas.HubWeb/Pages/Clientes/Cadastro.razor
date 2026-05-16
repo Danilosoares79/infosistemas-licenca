@@ -1,100 +1,129 @@
 @page "/clientes/novo"
 @page "/clientes/{Id:int}/editar"
-@inject LicencaApiService Api
-@inject NavigationManager Nav
 @using InfoSistemas.HubWeb.DTOs
+@using InfoSistemas.HubWeb.Services
+@using System.Net.Http.Json
+@using System.Text.RegularExpressions
+@inject LicencaApiService Api
+@inject AuthState AuthState
+@inject NavigationManager Nav
+@inject IHttpClientFactory HttpFactory
 
 <h2>@(Id == 0 ? "Novo Cliente" : "Editar Cliente")</h2>
 
-<div class="form-card">
-    <div class="form-section">
-        <h3>Dados da Empresa</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Razao Social *</label>
-                <input class="hub-input" @bind="razao" placeholder="Razao Social" />
+@if (!AuthState.CanEditClientes)
+{
+    <div class="alert alert-danger">Voce nao tem permissao para cadastrar clientes.</div>
+}
+else
+{
+    <div class="form-card">
+        <div class="form-section">
+            <h3>Dados da Empresa</h3>
+            <div class="form-row">
+                <div class="form-group" style="max-width:200px;">
+                    <label>CNPJ *</label>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <input class="hub-input" @bind="cnpj" @bind:event="oninput"
+                               @onblur="BuscarCnpj"
+                               placeholder="00.000.000/0001-00"
+                               disabled="@(salvando || buscandoCnpj)"/>
+                        @if (buscandoCnpj)
+                        {
+                            <span style="color:#6b7280;font-size:12px;white-space:nowrap;">Buscando...</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(erroCnpj))
+                    {
+                        <small style="color:#dc2626;">@erroCnpj</small>
+                    }
+                </div>
+                <div class="form-group flex-2">
+                    <label>Razao Social *</label>
+                    <input class="hub-input" @bind="razao" placeholder="Razao Social" disabled="@salvando"/>
+                </div>
+                <div class="form-group flex-2">
+                    <label>Nome Fantasia</label>
+                    <input class="hub-input" @bind="fantasia" placeholder="Fantasia" disabled="@salvando"/>
+                </div>
             </div>
-            <div class="form-group">
-                <label>Nome Fantasia</label>
-                <input class="hub-input" @bind="fantasia" placeholder="Fantasia" />
+            <div class="form-row">
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input class="hub-input" @bind="email" placeholder="contato@empresa.com" disabled="@salvando"/>
+                </div>
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input class="hub-input" @bind="fone" placeholder="(00) 00000-0000" disabled="@salvando"/>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group flex-3">
+                    <label>Endereco</label>
+                    <input class="hub-input" @bind="endereco" placeholder="Rua, numero" disabled="@salvando"/>
+                </div>
+                <div class="form-group flex-2">
+                    <label>Cidade</label>
+                    <input class="hub-input" @bind="cidade" disabled="@salvando"/>
+                </div>
+                <div class="form-group">
+                    <label>UF</label>
+                    <input class="hub-input" @bind="uf" maxlength="2" style="width:60px" disabled="@salvando"/>
+                </div>
+                <div class="form-group">
+                    <label>CEP</label>
+                    <input class="hub-input" @bind="cep" placeholder="00000-000" disabled="@salvando"/>
+                </div>
             </div>
         </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>CNPJ *</label>
-                <input class="hub-input" @bind="cnpj" placeholder="00.000.000/0001-00" />
-            </div>
-            <div class="form-group">
-                <label>E-mail</label>
-                <input class="hub-input" @bind="email" placeholder="contato@empresa.com" />
-            </div>
-            <div class="form-group">
-                <label>Telefone</label>
-                <input class="hub-input" @bind="fone" placeholder="(00) 00000-0000" />
+
+        <div class="form-section">
+            <h3>Licenca e Plano</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Plano</label>
+                    <select class="hub-select" @bind="plano" disabled="@salvando">
+                        <option value="BASICO">Basico (1 Desktop)</option>
+                        <option value="PROFISSIONAL">Profissional</option>
+                        <option value="ENTERPRISE">Enterprise</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Max. Desktops (PDV)</label>
+                    <input class="hub-input" type="number" min="1" max="50" @bind="maxDesktops"
+                           style="width:80px" disabled="@salvando"/>
+                    <small>Limite de computadores que podem usar o PDV</small>
+                </div>
+                <div class="form-group">
+                    <label>Max. Mobile (Garcom)</label>
+                    <input class="hub-input" type="number" min="0" max="100" @bind="maxMobile"
+                           style="width:80px" disabled="@salvando"/>
+                    <small>Limite de dispositivos moveis (garcons)</small>
+                </div>
+                <div class="form-group">
+                    <label>Vencimento *</label>
+                    <input class="hub-input" type="date" @bind="vencimento" disabled="@salvando"/>
+                </div>
             </div>
         </div>
-        <div class="form-row">
-            <div class="form-group flex-3">
-                <label>Endereco</label>
-                <input class="hub-input" @bind="endereco" placeholder="Rua, numero" />
-            </div>
-            <div class="form-group flex-2">
-                <label>Cidade</label>
-                <input class="hub-input" @bind="cidade" />
-            </div>
-            <div class="form-group">
-                <label>UF</label>
-                <input class="hub-input" @bind="uf" maxlength="2" style="width:60px" />
-            </div>
-            <div class="form-group">
-                <label>CEP</label>
-                <input class="hub-input" @bind="cep" placeholder="00000-000" />
-            </div>
+
+        @if (!string.IsNullOrEmpty(erro))
+        {
+            <div class="alert alert-danger">@erro</div>
+        }
+        @if (!string.IsNullOrEmpty(sucesso))
+        {
+            <div class="alert alert-success">@sucesso</div>
+        }
+
+        <div class="form-actions">
+            <button class="btn-secondary" @onclick='() => Nav.NavigateTo("/clientes")'>Cancelar</button>
+            <button class="btn-primary" @onclick="Salvar" disabled="@salvando">
+                @(salvando ? "Salvando..." : "Salvar")
+            </button>
         </div>
     </div>
-
-    <div class="form-section">
-        <h3>Licenca e Plano</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Plano</label>
-                <select class="hub-select" @bind="plano">
-                    <option value="BASICO">Basico</option>
-                    <option value="PROFISSIONAL">Profissional</option>
-                    <option value="ENTERPRISE">Enterprise</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Max. Desktops</label>
-                <input class="hub-input" type="number" min="1" max="50" @bind="maxDesktops" style="width:80px" />
-            </div>
-            <div class="form-group">
-                <label>Max. Mobile (Garcom)</label>
-                <input class="hub-input" type="number" min="0" max="100" @bind="maxMobile" style="width:80px" />
-            </div>
-            <div class="form-group">
-                <label>Vencimento *</label>
-                <input class="hub-input" type="date" @bind="vencimento" />
-            </div>
-        </div>
-    </div>
-
-    @if (!string.IsNullOrEmpty(erro))
-    {
-        <div class="alert alert-danger">@erro</div>
-    }
-    @if (!string.IsNullOrEmpty(sucesso))
-    {
-        <div class="alert alert-success">@sucesso</div>
-    }
-
-    <div class="form-actions">
-        <button class="btn-secondary" @onclick='() => Nav.NavigateTo("/clientes")'>Cancelar</button>
-        <button class="btn-primary" @onclick="Salvar" disabled="@salvando">
-            @(salvando ? "Salvando..." : "Salvar")
-        </button>
-    </div>
-</div>
+}
 
 @code {
     [Parameter] public int Id { get; set; }
@@ -104,8 +133,13 @@
     string plano = "PROFISSIONAL";
     int maxDesktops = 1, maxMobile = 0;
     DateTime vencimento = DateTime.Today.AddDays(30);
-    string erro = "", sucesso = "";
-    bool salvando;
+    string erro = "", sucesso = "", erroCnpj = "";
+    bool salvando, buscandoCnpj;
+
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsAuthenticated) Nav.NavigateTo("/login");
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,11 +148,83 @@
             var c = await Api.ObterClienteAsync(Id);
             if (c != null)
             {
-                razao = c.RazaoSocial; fantasia = c.Fantasia; cnpj = c.Cnpj;
-                email = c.Email; plano = c.Plano;
-                maxDesktops = c.MaxDesktops; maxMobile = c.MaxMobile;
-                vencimento = c.DataVencimento;
+                razao       = c.RazaoSocial;
+                fantasia    = c.Fantasia;
+                cnpj        = c.Cnpj;
+                email       = c.Email;
+                plano       = c.Plano;
+                maxDesktops = c.MaxDesktops;
+                maxMobile   = c.MaxMobile;
+                vencimento  = c.DataVencimento;
             }
+        }
+    }
+
+    // ── Auto-preenchimento via CNPJ (BrasilAPI) ───────────────────────
+    private async Task BuscarCnpj()
+    {
+        erroCnpj = "";
+        var cnpjLimpo = Regex.Replace(cnpj, @"[^\d]", "");
+        if (cnpjLimpo.Length != 14) return;
+
+        buscandoCnpj = true;
+        StateHasChanged();
+
+        try
+        {
+            var resp = await HttpFactory.CreateClient("brasilapi").GetAsync(
+                $"https://brasilapi.com.br/api/cnpj/v1/{cnpjLimpo}");
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                erroCnpj = "CNPJ nao encontrado na Receita Federal.";
+                return;
+            }
+
+            var dados = await resp.Content.ReadFromJsonAsync<BrasilApiCnpjDto>();
+            if (dados == null) return;
+
+            // Preencher campos automaticamente
+            razao    = dados.razao_social ?? razao;
+            fantasia = dados.nome_fantasia ?? fantasia;
+            email    = dados.email ?? email;
+
+            // Fone: pegar o primeiro disponivel
+            if (!string.IsNullOrEmpty(dados.ddd_telefone_1))
+            {
+                var tel = Regex.Replace(dados.ddd_telefone_1, @"[^\d]", "");
+                fone = tel.Length >= 10
+                    ? $"({tel[..2]}) {tel[2..].Insert(tel.Length - 2 - 4, "-")}"
+                    : dados.ddd_telefone_1;
+            }
+
+            // Endereço
+            var logradouro = dados.logradouro ?? "";
+            var numero     = dados.numero ?? "";
+            var comp       = dados.complemento ?? "";
+            endereco = string.Join(", ", new[] { logradouro, numero, comp }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+
+            cidade   = dados.municipio ?? cidade;
+            uf       = dados.uf ?? uf;
+            cep      = dados.cep != null
+                ? Regex.Replace(dados.cep, @"(\d{5})(\d{3})", "$1-$2")
+                : cep;
+
+            // Formatar o CNPJ
+            if (cnpjLimpo.Length == 14)
+                cnpj = $"{cnpjLimpo[..2]}.{cnpjLimpo[2..5]}.{cnpjLimpo[5..8]}/{cnpjLimpo[8..12]}-{cnpjLimpo[12..]}";
+
+            StateHasChanged();
+        }
+        catch
+        {
+            erroCnpj = "Erro ao consultar CNPJ. Preencha os dados manualmente.";
+        }
+        finally
+        {
+            buscandoCnpj = false;
+            StateHasChanged();
         }
     }
 
@@ -149,5 +255,20 @@
         }
         catch (Exception ex) { erro = $"Erro: {ex.Message}"; }
         finally { salvando = false; }
+    }
+
+    // ── DTO para a resposta da BrasilAPI ─────────────────────────────
+    private class BrasilApiCnpjDto
+    {
+        public string? razao_social { get; set; }
+        public string? nome_fantasia { get; set; }
+        public string? email { get; set; }
+        public string? ddd_telefone_1 { get; set; }
+        public string? logradouro { get; set; }
+        public string? numero { get; set; }
+        public string? complemento { get; set; }
+        public string? municipio { get; set; }
+        public string? uf { get; set; }
+        public string? cep { get; set; }
     }
 }
