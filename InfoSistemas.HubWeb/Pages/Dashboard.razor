@@ -1,6 +1,6 @@
 @page "/"
 @inject LicencaApiService Api
-@using InfoSistemas.LicencaAPI.DTOs
+@using InfoSistemas.HubWeb.DTOs
 
 <h2>Dashboard</h2>
 
@@ -73,9 +73,8 @@ else
         ativos     = clientes.Count(c => c.Status == "ATIVO");
         bloqueados = clientes.Count(c => c.Status == "BLOQUEADO");
         expirados  = clientes.Count(c => c.Status == "EXPIRADO");
-
-        alertas  = await Api.VencimentosAsync(5) ?? [];
-        vencendo = alertas.Count;
+        alertas    = await Api.VencimentosAsync(5) ?? [];
+        vencendo   = alertas.Count;
         carregando = false;
     }
 }
