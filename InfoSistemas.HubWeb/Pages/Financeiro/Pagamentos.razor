@@ -1,0 +1,71 @@
+@page "/financeiro/pagamentos"
+@using InfoSistemas.HubWeb.DTOs
+@using InfoSistemas.HubWeb.Services
+@inject LicencaApiService Api
+@inject AuthState AuthState
+@inject NavigationManager Nav
+
+<div class="page-header">
+    <h2>Pagamentos</h2>
+</div>
+
+@if (!AuthState.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+
+@if (carregando)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <table class="hub-table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Cliente</th>
+                <th>Valor</th>
+                <th>Forma</th>
+                <th>Dias renovados</th>
+                <th>Responsavel</th>
+                <th>Observacao</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (lista == null || lista.Count == 0)
+            {
+                <tr><td colspan="7" style="text-align:center;color:#888">Nenhum pagamento registrado.</td></tr>
+            }
+            else
+            {
+                @foreach (var p in lista)
+                {
+                    <tr>
+                        <td>@p.DataPagamento.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                        <td><a href="/clientes/@p.ClienteId" class="btn-link">@p.RazaoSocial</a></td>
+                        <td><strong>R$ @p.Valor.ToString("N2")</strong></td>
+                        <td><span class="badge badge-blue">@p.FormaPagamento</span></td>
+                        <td>@(p.DiasRenovados.HasValue ? $"+{p.DiasRenovados} dias" : "-")</td>
+                        <td>@(p.Responsavel ?? "-")</td>
+                        <td>@(p.Observacao ?? "-")</td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    <div class="section" style="margin-top:8px;text-align:right;color:#666;font-size:13px;">
+        Total: <strong>R$ @(lista?.Sum(p => p.Valor).ToString("N2") ?? "0,00")</strong>
+        em @(lista?.Count ?? 0) pagamento(s)
+    </div>
+}
+
+@code {
+    List<PagamentoDto>? lista;
+    bool carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthState.IsAuthenticated) return;
+        lista = await Api.ListarPagamentosAsync();
+        carregando = false;
+    }
+}

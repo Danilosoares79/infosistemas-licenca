@@ -1,7 +1,11 @@
 @page "/clientes/{Id:int}"
-@inject LicencaApiService Api
-@inject NavigationManager Nav
 @using InfoSistemas.HubWeb.DTOs
+@using InfoSistemas.HubWeb.Services
+@using Microsoft.JSInterop
+@inject LicencaApiService Api
+@inject AuthState AuthState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @if (cliente == null)
 {
@@ -22,7 +26,7 @@ else
     </div>
 
     <div class="detail-grid">
-        <!-- Dados do cliente -->
+        <!-- Dados -->
         <div class="detail-card">
             <h3>Dados</h3>
             <dl>
@@ -33,8 +37,7 @@ else
                 <dt>Mobile</dt><dd>@cliente.MobileAtivos / @cliente.MaxMobile</dd>
                 <dt>Vencimento</dt>
                 <dd class="@(cliente.DiasRestantes <= 5 ? "text-warning" : "") @(cliente.DiasRestantes < 0 ? "text-danger" : "")">
-                    @cliente.DataVencimento.ToString("dd/MM/yyyy")
-                    (@cliente.DiasRestantes dias)
+                    @cliente.DataVencimento.ToString("dd/MM/yyyy") (@cliente.DiasRestantes dias)
                 </dd>
             </dl>
         </div>
@@ -43,14 +46,15 @@ else
         <div class="detail-card">
             <h3>Acoes</h3>
 
-            @if (cliente.Status == "ATIVO" || cliente.Status == "EXPIRADO")
+            <!-- Renovar -->
+            @if (cliente.Status != "BLOQUEADO")
             {
                 <div class="action-section">
                     <h4>Renovar Licenca</h4>
                     <div class="form-row">
-                        <input class="hub-input" type="number" min="1" max="365" @bind="diasRenovar" style="width:80px" />
+                        <input class="hub-input" type="number" min="1" max="365" @bind="diasRenovar" style="width:80px"/>
                         <span>dias</span>
-                        <input class="hub-input" @bind="responsavelRenovar" placeholder="Responsavel" />
+                        <input class="hub-input" @bind="responsavelRenovar" placeholder="Responsavel"/>
                     </div>
                     <button class="btn-green" @onclick="Renovar" disabled="@processando">
                         Renovar +@diasRenovar dias
@@ -58,23 +62,42 @@ else
                 </div>
             }
 
+            <!-- Bloquear/Desbloquear -->
             <div class="action-section">
                 @if (cliente.Status != "BLOQUEADO")
                 {
                     <h4>Bloquear Cliente</h4>
-                    <input class="hub-input" @bind="motivoBloqueio" placeholder="Motivo do bloqueio" />
-                    <button class="btn-danger" @onclick="Bloquear" disabled="@processando">
-                        Bloquear
-                    </button>
+                    <input class="hub-input" @bind="motivoBloqueio" placeholder="Motivo do bloqueio"/>
+                    <button class="btn-danger" @onclick="Bloquear" disabled="@processando">Bloquear</button>
                 }
                 else
                 {
                     <h4>Desbloquear Cliente</h4>
-                    <p class="text-muted">Motivo: @cliente_full?.MotivoBloqueio</p>
-                    <button class="btn-green" @onclick="Desbloquear" disabled="@processando">
-                        Desbloquear
-                    </button>
+                    @if (!string.IsNullOrEmpty(cliente.MotivoBloqueio))
+                    { <p class="text-muted">Motivo: @cliente.MotivoBloqueio</p> }
+                    <button class="btn-green" @onclick="Desbloquear" disabled="@processando">Desbloquear</button>
                 }
+            </div>
+
+            <!-- Renovacao automatica -->
+            <div class="action-section">
+                <h4>Renovacao Automatica</h4>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" @bind="renovacaoAutomatica" @bind:after="SalvarRenovacaoAutomatica"/>
+                    <span>Renovar automaticamente +30 dias ao expirar</span>
+                </label>
+                <small class="text-muted">Quando ativo, ao vencer o sistema renova sozinho sem bloquear.</small>
+            </div>
+
+            <!-- Download .lic -->
+            <div class="action-section">
+                <h4>Arquivo de Licenca</h4>
+                <p class="text-muted" style="font-size:12px;margin-bottom:8px;">
+                    Gera um arquivo <code>.lic</code> assinado digitalmente para instalar no PDV.
+                </p>
+                <button class="btn-secondary" @onclick="DownloadLic" disabled="@processando">
+                    Baixar .lic
+                </button>
             </div>
         </div>
     </div>
@@ -82,6 +105,90 @@ else
     @if (!string.IsNullOrEmpty(mensagem))
     {
         <div class="alert @(erro ? "alert-danger" : "alert-success")">@mensagem</div>
+    }
+
+    <!-- Registrar Pagamento -->
+    <div class="section">
+        <h3>Registrar Pagamento</h3>
+        <div class="form-card">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input class="hub-input" type="number" step="0.01" min="0" @bind="pgValor" placeholder="0,00"/>
+                </div>
+                <div class="form-group">
+                    <label>Data do Pagamento</label>
+                    <input class="hub-input" type="date" @bind="pgData"/>
+                </div>
+                <div class="form-group">
+                    <label>Forma</label>
+                    <select class="hub-select" @bind="pgForma">
+                        <option>PIX</option>
+                        <option>BOLETO</option>
+                        <option>CARTAO</option>
+                        <option>DINHEIRO</option>
+                        <option>TRANSFERENCIA</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group flex-2">
+                    <label>Observacao (opcional)</label>
+                    <input class="hub-input" @bind="pgObs" placeholder="Ex: Mensalidade maio/2026"/>
+                </div>
+                <div class="form-group">
+                    <label>Responsavel</label>
+                    <input class="hub-input" @bind="pgResponsavel" placeholder="Nome"/>
+                </div>
+            </div>
+            <div class="form-row" style="align-items:center;gap:12px;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                    <input type="checkbox" @bind="pgRenovar"/>
+                    <span>Renovar licenca junto</span>
+                </label>
+                @if (pgRenovar)
+                {
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <input class="hub-input" type="number" min="1" max="365" @bind="pgDiasRenovar" style="width:70px"/>
+                        <span>dias</span>
+                    </div>
+                }
+            </div>
+            <div class="form-actions">
+                <button class="btn-primary" @onclick="RegistrarPagamento" disabled="@processando">
+                    Registrar Pagamento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historico de Pagamentos -->
+    @if (pagamentos?.Count > 0)
+    {
+        <div class="section">
+            <h3>Historico de Pagamentos</h3>
+            <table class="hub-table">
+                <thead>
+                    <tr><th>Data</th><th>Valor</th><th>Forma</th><th>Renovacao</th><th>Responsavel</th><th>Obs</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var p in pagamentos)
+                {
+                    <tr>
+                        <td>@p.DataPagamento.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                        <td><strong>R$ @p.Valor.ToString("N2")</strong></td>
+                        <td><span class="badge badge-blue">@p.FormaPagamento</span></td>
+                        <td>@(p.DiasRenovados.HasValue ? $"+{p.DiasRenovados} dias" : "-")</td>
+                        <td>@(p.Responsavel ?? "-")</td>
+                        <td>@(p.Observacao ?? "-")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            <div style="text-align:right;font-size:13px;color:#555;margin-top:6px;">
+                Total recebido: <strong>R$ @pagamentos.Sum(p => p.Valor).ToString("N2")</strong>
+            </div>
+        </div>
     }
 
     <!-- Dispositivos -->
@@ -94,29 +201,21 @@ else
                     <tr><th>Tipo</th><th>Nome</th><th>Versao</th><th>Ultimo Acesso</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
-                    @foreach (var d in dispositivos)
-                    {
-                        <tr>
-                            <td><span class="badge @(d.Tipo == "DESKTOP" ? "badge-blue" : "badge-purple")">@d.Tipo</span></td>
-                            <td>@d.Nome</td>
-                            <td>v@d.AppVersion</td>
-                            <td>@d.UltimoAcesso.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                            <td><span class="badge @(d.Ativo ? "badge-green" : "badge-gray")">@(d.Ativo ? "Ativo" : "Inativo")</span></td>
-                            <td>
-                                @if (d.Ativo)
-                                {
-                                    <button class="btn-link text-danger" @onclick="() => RemoverDispositivo(d.MachineId)">Remover</button>
-                                }
-                            </td>
-                        </tr>
-                    }
+                @foreach (var d in dispositivos)
+                {
+                    <tr>
+                        <td><span class="badge @(d.Tipo == "DESKTOP" ? "badge-blue" : "badge-purple")">@d.Tipo</span></td>
+                        <td>@d.Nome</td>
+                        <td>v@d.AppVersion</td>
+                        <td>@d.UltimoAcesso.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><span class="badge @(d.Ativo ? "badge-green" : "badge-gray")">@(d.Ativo ? "Ativo" : "Inativo")</span></td>
+                        <td>@if (d.Ativo) { <button class="btn-link text-danger" @onclick="() => RemoverDispositivo(d.MachineId)">Remover</button> }</td>
+                    </tr>
+                }
                 </tbody>
             </table>
         }
-        else
-        {
-            <p class="text-muted">Nenhum dispositivo registrado.</p>
-        }
+        else { <p class="text-muted">Nenhum dispositivo registrado.</p> }
     </div>
 }
 
@@ -124,31 +223,37 @@ else
     [Parameter] public int Id { get; set; }
 
     ClienteResumoDto? cliente;
-    ClienteResumoDto? cliente_full;
     List<DispositivoDto>? dispositivos;
+    List<PagamentoDto>? pagamentos;
+
     int diasRenovar = 30;
     string responsavelRenovar = "", motivoBloqueio = "", mensagem = "";
-    bool processando, erro;
+    bool processando, erro, renovacaoAutomatica;
 
-    record ClienteFullDto(string? MotivoBloqueio);
+    // Pagamento form
+    decimal pgValor; DateTime pgData = DateTime.Today;
+    string pgForma = "PIX", pgObs = "", pgResponsavel = "";
+    bool pgRenovar = true; int pgDiasRenovar = 30;
 
-    protected override async Task OnInitializedAsync() => await Carregar();
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthState.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+        await Carregar();
+    }
 
     async Task Carregar()
     {
         cliente      = await Api.ObterClienteAsync(Id);
         dispositivos = await Api.ListarDispositivosAsync(Id) ?? [];
+        pagamentos   = await Api.ListarPagamentosAsync(Id) ?? [];
+        // RenovacaoAutomatica nao vem no ClienteResumoDto - precisamos de endpoint separado
+        // Por ora, inicializa como false (pode ser melhorado depois)
     }
 
     async Task Renovar()
     {
         processando = true; mensagem = ""; erro = false;
-        try
-        {
-            await Api.RenovarAsync(Id, new RenovarRequest(diasRenovar, responsavelRenovar, ""));
-            mensagem = $"Licenca renovada por {diasRenovar} dias!";
-            await Carregar();
-        }
+        try { await Api.RenovarAsync(Id, new RenovarRequest(diasRenovar, responsavelRenovar, "")); mensagem = $"Licenca renovada por {diasRenovar} dias!"; await Carregar(); }
         catch (Exception ex) { mensagem = $"Erro: {ex.Message}"; erro = true; }
         finally { processando = false; }
     }
@@ -157,12 +262,7 @@ else
     {
         if (string.IsNullOrWhiteSpace(motivoBloqueio)) { mensagem = "Informe o motivo."; erro = true; return; }
         processando = true; mensagem = ""; erro = false;
-        try
-        {
-            await Api.BloquearAsync(Id, new BloquearRequest(motivoBloqueio, "Financeiro"));
-            mensagem = "Cliente bloqueado. O sistema ira fechar no proximo heartbeat (max 15 min).";
-            await Carregar();
-        }
+        try { await Api.BloquearAsync(Id, new BloquearRequest(motivoBloqueio, "Admin")); mensagem = "Cliente bloqueado."; await Carregar(); }
         catch (Exception ex) { mensagem = $"Erro: {ex.Message}"; erro = true; }
         finally { processando = false; }
     }
@@ -170,11 +270,49 @@ else
     async Task Desbloquear()
     {
         processando = true; mensagem = ""; erro = false;
+        try { await Api.DesbloquearAsync(Id); mensagem = "Cliente desbloqueado!"; await Carregar(); }
+        catch (Exception ex) { mensagem = $"Erro: {ex.Message}"; erro = true; }
+        finally { processando = false; }
+    }
+
+    async Task SalvarRenovacaoAutomatica()
+    {
+        try { await Api.AtualizarRenovacaoAutomaticaAsync(Id, renovacaoAutomatica); mensagem = renovacaoAutomatica ? "Renovacao automatica ativada." : "Renovacao automatica desativada."; erro = false; }
+        catch (Exception ex) { mensagem = $"Erro: {ex.Message}"; erro = true; }
+    }
+
+    async Task RegistrarPagamento()
+    {
+        if (pgValor <= 0) { mensagem = "Informe um valor valido."; erro = true; return; }
+        processando = true; mensagem = ""; erro = false;
         try
         {
-            await Api.DesbloquearAsync(Id);
-            mensagem = "Cliente desbloqueado com sucesso!";
+            await Api.RegistrarPagamentoAsync(Id, new RegistrarPagamentoRequest(
+                pgValor, pgData, pgForma,
+                string.IsNullOrWhiteSpace(pgObs) ? null : pgObs,
+                string.IsNullOrWhiteSpace(pgResponsavel) ? null : pgResponsavel,
+                pgRenovar, pgDiasRenovar));
+            mensagem = pgRenovar ? $"Pagamento registrado e licenca renovada por {pgDiasRenovar} dias!" : "Pagamento registrado!";
+            pgValor = 0; pgObs = ""; pgResponsavel = "";
             await Carregar();
+        }
+        catch (Exception ex) { mensagem = $"Erro: {ex.Message}"; erro = true; }
+        finally { processando = false; }
+    }
+
+    async Task DownloadLic()
+    {
+        processando = true; mensagem = ""; erro = false;
+        try
+        {
+            var result = await Api.DownloadLicAsync(Id);
+            if (result.HasValue)
+            {
+                var (nome, bytes) = result.Value;
+                await JS.InvokeVoidAsync("downloadFile", nome, Convert.ToBase64String(bytes));
+                mensagem = $"Arquivo {nome} gerado com sucesso!";
+            }
+            else { mensagem = "Falha ao gerar arquivo.lic"; erro = true; }
         }
         catch (Exception ex) { mensagem = $"Erro: {ex.Message}"; erro = true; }
         finally { processando = false; }
@@ -186,11 +324,5 @@ else
         await Carregar();
     }
 
-    static string BadgeClass(string status) => status switch
-    {
-        "ATIVO"     => "badge-green",
-        "BLOQUEADO" => "badge-red",
-        "EXPIRADO"  => "badge-orange",
-        _           => "badge-gray"
-    };
+    static string BadgeClass(string s) => s switch { "ATIVO" => "badge-green", "BLOQUEADO" => "badge-red", "EXPIRADO" => "badge-orange", _ => "badge-gray" };
 }

@@ -9,14 +9,13 @@ public class LicencaDbContext(DbContextOptions<LicencaDbContext> options) : DbCo
     public DbSet<Licenca>     Licencas     => Set<Licenca>();
     public DbSet<Dispositivo> Dispositivos => Set<Dispositivo>();
     public DbSet<Renovacao>   Renovacoes   => Set<Renovacao>();
+    public DbSet<Pagamento>   Pagamentos   => Set<Pagamento>();
     public DbSet<Usuario>     Usuarios     => Set<Usuario>();
 
     protected override void OnModelCreating(ModelBuilder m)
     {
-        // MySQL: charset padrao utf8mb4 para suporte completo a Unicode
         m.HasCharSet("utf8mb4");
 
-        // Cliente
         m.Entity<Cliente>(e =>
         {
             e.HasKey(x => x.Id);
@@ -32,21 +31,14 @@ public class LicencaDbContext(DbContextOptions<LicencaDbContext> options) : DbCo
             e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("ATIVO");
             e.Property(x => x.Plano).HasMaxLength(20).HasDefaultValue("BASICO");
             e.Property(x => x.MotivoBloqueio).HasMaxLength(255);
+            e.Property(x => x.RenovacaoAutomatica).HasDefaultValue(false);
 
-            e.HasOne(x => x.Licenca)
-             .WithOne(x => x.Cliente)
-             .HasForeignKey<Licenca>(x => x.ClienteId);
-
-            e.HasMany(x => x.Dispositivos)
-             .WithOne(x => x.Cliente)
-             .HasForeignKey(x => x.ClienteId);
-
-            e.HasMany(x => x.Renovacoes)
-             .WithOne(x => x.Cliente)
-             .HasForeignKey(x => x.ClienteId);
+            e.HasOne(x => x.Licenca).WithOne(x => x.Cliente).HasForeignKey<Licenca>(x => x.ClienteId);
+            e.HasMany(x => x.Dispositivos).WithOne(x => x.Cliente).HasForeignKey(x => x.ClienteId);
+            e.HasMany(x => x.Renovacoes).WithOne(x => x.Cliente).HasForeignKey(x => x.ClienteId);
+            e.HasMany(x => x.Pagamentos).WithOne(x => x.Cliente).HasForeignKey(x => x.ClienteId);
         });
 
-        // Licenca
         m.Entity<Licenca>(e =>
         {
             e.HasKey(x => x.Id);
@@ -54,7 +46,6 @@ public class LicencaDbContext(DbContextOptions<LicencaDbContext> options) : DbCo
             e.HasIndex(x => x.Chave).IsUnique();
         });
 
-        // Dispositivo
         m.Entity<Dispositivo>(e =>
         {
             e.HasKey(x => x.Id);
@@ -62,11 +53,9 @@ public class LicencaDbContext(DbContextOptions<LicencaDbContext> options) : DbCo
             e.Property(x => x.Tipo).HasMaxLength(10).HasDefaultValue("DESKTOP");
             e.Property(x => x.Nome).HasMaxLength(80);
             e.Property(x => x.AppVersion).HasMaxLength(20);
-            // Indice unico: um mesmo MachineId nao pode ter dois registros ativos pro mesmo cliente
             e.HasIndex(x => new { x.ClienteId, x.MachineId }).IsUnique();
         });
 
-        // Renovacao
         m.Entity<Renovacao>(e =>
         {
             e.HasKey(x => x.Id);
@@ -74,7 +63,15 @@ public class LicencaDbContext(DbContextOptions<LicencaDbContext> options) : DbCo
             e.Property(x => x.Observacao).HasMaxLength(255);
         });
 
-        // Usuario
+        m.Entity<Pagamento>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Valor).HasPrecision(10, 2);
+            e.Property(x => x.FormaPagamento).HasMaxLength(20).HasDefaultValue("PIX");
+            e.Property(x => x.Observacao).HasMaxLength(255);
+            e.Property(x => x.Responsavel).HasMaxLength(80);
+        });
+
         m.Entity<Usuario>(e =>
         {
             e.HasKey(x => x.Id);
