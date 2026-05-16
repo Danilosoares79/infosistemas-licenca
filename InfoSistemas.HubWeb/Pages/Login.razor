@@ -2,7 +2,6 @@
 @layout EmptyLayout
 @using InfoSistemas.HubWeb.DTOs
 @using InfoSistemas.HubWeb.Services
-@using Microsoft.AspNetCore.Components.Web
 @inject AuthApiService AuthApi
 @inject AuthState AuthState
 @inject NavigationManager Nav
@@ -12,7 +11,13 @@
 <div class="login-bg">
     <div class="login-card">
         <div class="login-brand">
-            <div class="login-logo">IS</div>
+            <!-- Logo real da InfoSistemas -->
+            <img src="css/logo_infosistemas.jpg"
+                 alt="InfoSistemas"
+                 class="login-logo-img"
+                 onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='inline-flex';" />
+            <!-- Fallback se a imagem nao carregar -->
+            <div class="login-logo" id="logo-fallback" style="display:none;">IS</div>
             <h1>InfoSistemas Hub</h1>
             <p class="login-subtitle">Sistema de Gerenciamento de Licencas</p>
         </div>
@@ -46,7 +51,7 @@
         </form>
 
         <div class="login-rodape">
-            <small>InfoSistemas &copy; @DateTime.Now.Year</small>
+            <small>InfoSistemas &copy; @DateTime.Now.Year &mdash; Todos os direitos reservados</small>
         </div>
     </div>
 </div>

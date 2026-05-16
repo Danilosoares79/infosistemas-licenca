@@ -5,10 +5,23 @@
 <nav class="nav-menu">
     <NavLink href="/" Match="NavLinkMatch.All" class="nav-item">Dashboard</NavLink>
     <NavLink href="/clientes" class="nav-item">Clientes</NavLink>
-    <NavLink href="/clientes/novo" class="nav-item">Novo Cliente</NavLink>
+
+    @if (AuthState.CanEditClientes)
+    {
+        <NavLink href="/clientes/novo" class="nav-item">Novo Cliente</NavLink>
+    }
+
     <NavLink href="/financeiro/vencimentos" class="nav-item">Vencimentos</NavLink>
-    <NavLink href="/financeiro/pagamentos" class="nav-item">Pagamentos</NavLink>
-    <NavLink href="/usuarios" class="nav-item">Usuarios</NavLink>
+
+    @if (AuthState.CanViewPagamentos)
+    {
+        <NavLink href="/financeiro/pagamentos" class="nav-item">Pagamentos</NavLink>
+    }
+
+    @if (AuthState.CanViewUsuarios)
+    {
+        <NavLink href="/usuarios" class="nav-item">Usuarios</NavLink>
+    }
 </nav>
 
 @if (AuthState.IsAuthenticated)
@@ -17,6 +30,7 @@
         <div class="nav-user-info">
             <span class="nav-user-name">@AuthState.Usuario!.Nome</span>
             <span class="nav-user-login">@AuthState.Usuario.Login</span>
+            <span class="nav-user-perfil @PerfilClass">@AuthState.Usuario.Perfil</span>
         </div>
         <div class="nav-user-actions">
             <NavLink href="/alterar-senha" class="nav-user-link">Alterar senha</NavLink>
@@ -36,4 +50,12 @@
         AuthState.Logout();
         Nav.NavigateTo("/login", forceLoad: true);
     }
+
+    private string PerfilClass => AuthState.Usuario?.Perfil switch
+    {
+        "Admin"        => "badge-perfil admin",
+        "Operador"     => "badge-perfil operador",
+        "Visualizador" => "badge-perfil visualizador",
+        _              => "badge-perfil"
+    };
 }

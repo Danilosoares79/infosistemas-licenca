@@ -8,92 +8,189 @@
 
 <PageTitle>@(IsNovo ? "Novo Usuario" : "Editar Usuario")</PageTitle>
 
-<h2>@(IsNovo ? "Novo Usuario" : "Editar Usuario")</h2>
-
-<div class="form-container" style="max-width:560px;">
-    <form @onsubmit="Salvar" @onsubmit:preventDefault>
-        <div class="form-group">
-            <label>Login</label>
-            <input type="text" @bind="login" @bind:event="oninput" disabled="@(!IsNovo || salvando)"/>
-        </div>
-
-        <div class="form-group">
-            <label>Nome completo</label>
-            <input type="text" @bind="nome" @bind:event="oninput" disabled="@salvando"/>
-        </div>
-
-        <div class="form-group">
-            <label>E-mail (opcional)</label>
-            <input type="email" @bind="email" @bind:event="oninput" disabled="@salvando"/>
-        </div>
-
-        @if (IsNovo)
-        {
-            <div class="form-group">
-                <label>Senha inicial</label>
-                <input type="password" @bind="senha" @bind:event="oninput" disabled="@salvando"/>
-                <small>Minimo 4 caracteres</small>
-            </div>
-        }
-        else
-        {
-            <div class="form-group">
-                <label>Status</label>
-                <select @bind="ativo" disabled="@salvando">
-                    <option value="true">Ativo</option>
-                    <option value="false">Inativo</option>
-                </select>
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(erro))
-        {
-            <div class="msg-erro">@erro</div>
-        }
-
-        <div class="form-actions">
-            <button type="submit" class="btn-primary" disabled="@salvando">
-                @(salvando ? "Salvando..." : "Salvar")
-            </button>
-            <button type="button" class="btn-secondary" @onclick='() => Nav.NavigateTo("/usuarios")' disabled="@salvando">
-                Cancelar
-            </button>
-        </div>
-    </form>
+<div class="page-header">
+    <h2>@(IsNovo ? "Novo Usuario" : "Editar Usuario")</h2>
 </div>
+
+@if (!AuthState.CanManageUsuarios)
+{
+    <div class="alert alert-danger">Voce nao tem permissao para gerenciar usuarios.</div>
+}
+else
+{
+    <div class="form-container" style="max-width:600px;">
+        <form @onsubmit="Salvar" @onsubmit:preventDefault>
+
+            <div class="form-group">
+                <label>Login</label>
+                <input type="text" @bind="login" @bind:event="oninput" disabled="@(!IsNovo || salvando)"
+                       style="padding:8px 11px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;width:100%;outline:none;"/>
+            </div>
+
+            <div class="form-group">
+                <label>Nome completo</label>
+                <input type="text" @bind="nome" @bind:event="oninput" disabled="@salvando"
+                       style="padding:8px 11px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;width:100%;outline:none;"/>
+            </div>
+
+            <div class="form-group">
+                <label>E-mail (opcional)</label>
+                <input type="email" @bind="email" @bind:event="oninput" disabled="@salvando"
+                       style="padding:8px 11px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;width:100%;outline:none;"/>
+            </div>
+
+            @if (IsNovo)
+            {
+                <div class="form-group">
+                    <label>Senha inicial</label>
+                    <input type="password" @bind="senha" @bind:event="oninput" disabled="@salvando"
+                           style="padding:8px 11px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;width:100%;outline:none;"/>
+                    <small>Minimo 4 caracteres. O usuario sera obrigado a trocar no primeiro acesso.</small>
+                </div>
+            }
+            else
+            {
+                <div class="form-group">
+                    <label>Status</label>
+                    <select @bind="ativo" disabled="@(salvando || AuthState.Usuario?.Id == Id)"
+                            style="padding:8px 11px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;width:100%;background:#fff;">
+                        <option value="true">Ativo</option>
+                        <option value="false">Inativo</option>
+                    </select>
+                    @if (AuthState.Usuario?.Id == Id)
+                    {
+                        <small>Nao e possivel desativar o proprio usuario.</small>
+                    }
+                </div>
+            }
+
+            <!-- Perfil de acesso com explicação -->
+            <div class="form-group">
+                <label>Perfil de Acesso</label>
+                <select @bind="perfil" disabled="@(salvando || AuthState.Usuario?.Id == Id)"
+                        style="padding:8px 11px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;width:100%;background:#fff;">
+                    <option value="Admin">Admin</option>
+                    <option value="Operador">Operador</option>
+                    <option value="Visualizador">Visualizador</option>
+                </select>
+                @if (AuthState.Usuario?.Id == Id)
+                {
+                    <small>Nao e possivel alterar o proprio perfil.</small>
+                }
+            </div>
+
+            <!-- Box de explicação das permissões -->
+            <div class="permissoes-box">
+                <h4>O que cada perfil pode fazer:</h4>
+                <table class="perm-table">
+                    <thead>
+                        <tr>
+                            <th>Funcionalidade</th>
+                            <th>Admin</th>
+                            <th>Operador</th>
+                            <th>Visualizador</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="@(perfil == "Admin" ? "row-selected" : "")">
+                            <td>Ver Dashboard e Clientes</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-ok">✅</td>
+                        </tr>
+                        <tr class="@(perfil == "Admin" ? "row-selected" : "")">
+                            <td>Ver Vencimentos e Pagamentos</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-no">❌</td>
+                        </tr>
+                        <tr class="@(perfil == "Operador" ? "row-selected" : "")">
+                            <td>Cadastrar e editar clientes</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-no">❌</td>
+                        </tr>
+                        <tr class="@(perfil == "Operador" ? "row-selected" : "")">
+                            <td>Renovar licenca</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-no">❌</td>
+                        </tr>
+                        <tr class="@(perfil == "Operador" ? "row-selected" : "")">
+                            <td>Bloquear / Desbloquear</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-no">❌</td>
+                        </tr>
+                        <tr class="@(perfil == "Operador" ? "row-selected" : "")">
+                            <td>Registrar pagamentos</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-no">❌</td>
+                        </tr>
+                        <tr class="@(perfil == "Operador" ? "row-selected" : "")">
+                            <td>Baixar arquivo .lic</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-no">❌</td>
+                        </tr>
+                        <tr class="@(perfil == "Admin" ? "row-selected" : "")">
+                            <td>Gerenciar usuarios</td>
+                            <td class="perm-ok">✅</td>
+                            <td class="perm-no">❌</td>
+                            <td class="perm-no">❌</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            @if (!string.IsNullOrEmpty(erro))
+            {
+                <div class="msg-erro">@erro</div>
+            }
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary" disabled="@salvando">
+                    @(salvando ? "Salvando..." : "Salvar")
+                </button>
+                <button type="button" class="btn-secondary"
+                        @onclick='() => Nav.NavigateTo("/usuarios")' disabled="@salvando">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+}
 
 @code {
     [Parameter] public int? Id { get; set; }
 
-    private string login = "";
-    private string nome = "";
-    private string email = "";
-    private string senha = "";
+    private string login = "", nome = "", email = "", senha = "", perfil = "Admin";
     private bool ativo = true;
     private string? erro;
     private bool salvando;
-
     private bool IsNovo => Id == null;
 
     protected override async Task OnInitializedAsync()
     {
         if (!AuthState.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+        if (!AuthState.CanManageUsuarios) return;
 
         if (!IsNovo)
         {
             var u = await UsuarioApi.ObterAsync(Id!.Value);
             if (u == null) { Nav.NavigateTo("/usuarios"); return; }
-            login = u.Login;
-            nome = u.Nome;
-            email = u.Email ?? "";
-            ativo = u.Ativo;
+            login  = u.Login;
+            nome   = u.Nome;
+            email  = u.Email ?? "";
+            ativo  = u.Ativo;
+            perfil = u.Perfil;
         }
     }
 
     private async Task Salvar()
     {
         erro = null;
-
         if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(nome))
         {
             erro = "Login e nome sao obrigatorios";
@@ -105,17 +202,22 @@
         if (IsNovo)
         {
             if (senha.Length < 4) { erro = "Senha deve ter no minimo 4 caracteres"; salvando = false; return; }
-
             var (ok, erroApi, _) = await UsuarioApi.CriarAsync(new CriarUsuarioRequest(
-                login.Trim(), senha, nome.Trim(), string.IsNullOrWhiteSpace(email) ? null : email.Trim(), "Admin"));
-
+                login.Trim(), senha, nome.Trim(),
+                string.IsNullOrWhiteSpace(email) ? null : email.Trim(), perfil));
             if (!ok) { erro = erroApi ?? "Falha ao criar"; salvando = false; return; }
         }
         else
         {
-            var (ok, erroApi) = await UsuarioApi.AtualizarAsync(Id!.Value, new AtualizarUsuarioRequest(
-                nome.Trim(), string.IsNullOrWhiteSpace(email) ? null : email.Trim(), "Admin", ativo));
+            // Nao atualiza perfil nem status do proprio usuario
+            var perfilFinal = AuthState.Usuario?.Id == Id ? AuthState.Usuario!.Perfil : perfil;
+            var ativoFinal  = AuthState.Usuario?.Id == Id ? true : ativo;
 
+            var (ok, erroApi) = await UsuarioApi.AtualizarAsync(Id!.Value,
+                new AtualizarUsuarioRequest(
+                    nome.Trim(),
+                    string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
+                    perfilFinal, ativoFinal));
             if (!ok) { erro = erroApi ?? "Falha ao salvar"; salvando = false; return; }
         }
 

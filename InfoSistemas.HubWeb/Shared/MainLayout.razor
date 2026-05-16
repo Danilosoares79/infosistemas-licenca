@@ -12,9 +12,16 @@ else
 {
     <div class="hub-layout">
         <nav class="hub-nav">
+            <!-- Logo InfoSistemas no topo -->
             <div class="hub-brand">
-                <span class="brand-icon">IS</span>
-                <span class="brand-name">InfoSistemas Hub</span>
+                <img src="css/logo_infosistemas.jpg"
+                     alt="InfoSistemas"
+                     class="brand-logo"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                <div class="brand-fallback" style="display:none;">
+                    <span class="brand-icon">IS</span>
+                    <span class="brand-name">InfoSistemas Hub</span>
+                </div>
             </div>
             <NavMenu />
         </nav>
@@ -38,17 +45,13 @@ else
         {
             var uri = new Uri(Nav.Uri);
             if (!uri.AbsolutePath.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
-            {
                 Nav.NavigateTo("/login");
-            }
         }
         else if (AuthState.MustChangePassword)
         {
             var uri = new Uri(Nav.Uri);
             if (!uri.AbsolutePath.StartsWith("/alterar-senha", StringComparison.OrdinalIgnoreCase))
-            {
                 Nav.NavigateTo("/alterar-senha");
-            }
         }
     }
 
