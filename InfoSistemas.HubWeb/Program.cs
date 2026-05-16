@@ -3,8 +3,10 @@ using InfoSistemas.HubWeb.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configurar porta do Railway
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5200";
+// Configurar porta do Railway - Railway usa HTTP_PORTS, não PORT
+var port = Environment.GetEnvironmentVariable("HTTP_PORTS") 
+           ?? Environment.GetEnvironmentVariable("PORT") 
+           ?? "5200";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 builder.Services.AddRazorPages();
