@@ -1,3 +1,7 @@
+@using InfoSistemas.HubWeb.Services
+@inject AuthState AuthState
+@implements IDisposable
+
 <nav class="nav-menu">
     <NavLink href="/" Match="NavLinkMatch.All" class="nav-item">
         Dashboard
@@ -11,4 +15,41 @@
     <NavLink href="/financeiro/vencimentos" class="nav-item">
         Vencimentos
     </NavLink>
+    <NavLink href="/usuarios" class="nav-item">
+        Usuarios
+    </NavLink>
 </nav>
+
+@if (AuthState.IsAuthenticated)
+{
+    <div class="nav-user">
+        <div class="nav-user-info">
+            <span class="nav-user-name">@AuthState.Usuario!.Nome</span>
+            <span class="nav-user-login">@AuthState.Usuario.Login</span>
+        </div>
+        <div class="nav-user-actions">
+            <NavLink href="/alterar-senha" class="nav-user-link">Alterar senha</NavLink>
+            <button class="nav-user-btn" @onclick="Sair">Sair</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] NavigationManager Nav { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        AuthState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= StateHasChanged;
+    }
+
+    private void Sair()
+    {
+        AuthState.Logout();
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+}

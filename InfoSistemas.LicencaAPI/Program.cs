@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Le a connection string — suporta variavel de ambiente direta do Railway
-// Railway: MYSQL_CONNECTION_STRING
-// Local:   ConnectionStrings:MySql no appsettings.json
+// Le a connection string — suporta variavel de ambiente direta do Railway/Render/AWS
+// Producao: MYSQL_CONNECTION_STRING
+// Local:    ConnectionStrings:MySql no appsettings.json
 var connStr =
     Environment.GetEnvironmentVariable("MYSQL_CONNECTION_STRING")
     ?? builder.Configuration.GetConnectionString("MySql")
@@ -25,6 +25,7 @@ builder.Services.AddDbContext<LicencaDbContext>(opt =>
 
 builder.Services.AddScoped<LicencaService>();
 builder.Services.AddScoped<AlertaService>();
+builder.Services.AddScoped<AuthService>();
 builder.Services.AddHostedService<AlertaBackgroundService>();
 
 builder.Services.AddControllers();
@@ -45,17 +46,21 @@ builder.Services.AddCors(opt =>
 
 var app = builder.Build();
 
-// Criar/migrar banco automaticamente
+// Criar/migrar banco automaticamente + seed usuario admin
 using (var scope = app.Services.CreateScope())
 {
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<LicencaDbContext>();
         db.Database.EnsureCreated();
+
+        // Cria usuario admin/admin se nao houver nenhum usuario no banco
+        var authSvc = scope.ServiceProvider.GetRequiredService<AuthService>();
+        await authSvc.SeedAdminPadraoAsync();
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[AVISO] EnsureCreated: {ex.Message}");
+        Console.WriteLine($"[AVISO] Inicializacao do banco: {ex.Message}");
     }
 }
 

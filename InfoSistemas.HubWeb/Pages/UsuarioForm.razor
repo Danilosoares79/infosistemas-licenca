@@ -1,0 +1,124 @@
+@page "/usuarios/novo"
+@page "/usuarios/{Id:int}"
+@using InfoSistemas.HubWeb.DTOs
+@using InfoSistemas.HubWeb.Services
+@inject AuthState AuthState
+@inject UsuarioApiService UsuarioApi
+@inject NavigationManager Nav
+
+<PageTitle>@(IsNovo ? "Novo Usuario" : "Editar Usuario")</PageTitle>
+
+<h2>@(IsNovo ? "Novo Usuario" : "Editar Usuario")</h2>
+
+<div class="form-container" style="max-width:560px;">
+    <form @onsubmit="Salvar" @onsubmit:preventDefault>
+        <div class="form-group">
+            <label>Login</label>
+            <input type="text" @bind="login" @bind:event="oninput" disabled="@(!IsNovo || salvando)"/>
+        </div>
+
+        <div class="form-group">
+            <label>Nome completo</label>
+            <input type="text" @bind="nome" @bind:event="oninput" disabled="@salvando"/>
+        </div>
+
+        <div class="form-group">
+            <label>E-mail (opcional)</label>
+            <input type="email" @bind="email" @bind:event="oninput" disabled="@salvando"/>
+        </div>
+
+        @if (IsNovo)
+        {
+            <div class="form-group">
+                <label>Senha inicial</label>
+                <input type="password" @bind="senha" @bind:event="oninput" disabled="@salvando"/>
+                <small>Minimo 4 caracteres</small>
+            </div>
+        }
+        else
+        {
+            <div class="form-group">
+                <label>Status</label>
+                <select @bind="ativo" disabled="@salvando">
+                    <option value="true">Ativo</option>
+                    <option value="false">Inativo</option>
+                </select>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(erro))
+        {
+            <div class="msg-erro">@erro</div>
+        }
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary" disabled="@salvando">
+                @(salvando ? "Salvando..." : "Salvar")
+            </button>
+            <button type="button" class="btn-secondary" @onclick='() => Nav.NavigateTo("/usuarios")' disabled="@salvando">
+                Cancelar
+            </button>
+        </div>
+    </form>
+</div>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private string login = "";
+    private string nome = "";
+    private string email = "";
+    private string senha = "";
+    private bool ativo = true;
+    private string? erro;
+    private bool salvando;
+
+    private bool IsNovo => Id == null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthState.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+
+        if (!IsNovo)
+        {
+            var u = await UsuarioApi.ObterAsync(Id!.Value);
+            if (u == null) { Nav.NavigateTo("/usuarios"); return; }
+            login = u.Login;
+            nome = u.Nome;
+            email = u.Email ?? "";
+            ativo = u.Ativo;
+        }
+    }
+
+    private async Task Salvar()
+    {
+        erro = null;
+
+        if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(nome))
+        {
+            erro = "Login e nome sao obrigatorios";
+            return;
+        }
+
+        salvando = true;
+
+        if (IsNovo)
+        {
+            if (senha.Length < 4) { erro = "Senha deve ter no minimo 4 caracteres"; salvando = false; return; }
+
+            var (ok, erroApi, _) = await UsuarioApi.CriarAsync(new CriarUsuarioRequest(
+                login.Trim(), senha, nome.Trim(), string.IsNullOrWhiteSpace(email) ? null : email.Trim(), "Admin"));
+
+            if (!ok) { erro = erroApi ?? "Falha ao criar"; salvando = false; return; }
+        }
+        else
+        {
+            var (ok, erroApi) = await UsuarioApi.AtualizarAsync(Id!.Value, new AtualizarUsuarioRequest(
+                nome.Trim(), string.IsNullOrWhiteSpace(email) ? null : email.Trim(), "Admin", ativo));
+
+            if (!ok) { erro = erroApi ?? "Falha ao salvar"; salvando = false; return; }
+        }
+
+        Nav.NavigateTo("/usuarios");
+    }
+}

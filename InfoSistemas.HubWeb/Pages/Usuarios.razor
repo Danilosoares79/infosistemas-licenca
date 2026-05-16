@@ -1,0 +1,108 @@
+@page "/usuarios"
+@using InfoSistemas.HubWeb.DTOs
+@using InfoSistemas.HubWeb.Services
+@inject AuthState AuthState
+@inject UsuarioApiService UsuarioApi
+@inject NavigationManager Nav
+
+<PageTitle>Usuarios</PageTitle>
+
+<div class="page-header">
+    <h2>Usuarios</h2>
+    <button class="btn-primary" @onclick='() => Nav.NavigateTo("/usuarios/novo")'>+ Novo Usuario</button>
+</div>
+
+@if (carregando)
+{
+    <p>Carregando...</p>
+}
+else if (lista == null || lista.Count == 0)
+{
+    <p>Nenhum usuario cadastrado.</p>
+}
+else
+{
+    <table class="hub-table">
+        <thead>
+            <tr>
+                <th>Login</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Perfil</th>
+                <th>Status</th>
+                <th>Ultimo acesso</th>
+                <th>Acoes</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var u in lista)
+        {
+            <tr>
+                <td>@u.Login</td>
+                <td>@u.Nome</td>
+                <td>@(u.Email ?? "-")</td>
+                <td>@u.Perfil</td>
+                <td>@(u.Ativo ? "Ativo" : "Inativo")</td>
+                <td>@(u.UltimoAcesso?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                <td>
+                    <button class="btn-link" @onclick="() => Editar(u.Id)">Editar</button>
+                    @if (AuthState.Usuario?.Id != u.Id)
+                    {
+                        <button class="btn-link" @onclick="() => ResetarSenha(u)">Resetar senha</button>
+                        <button class="btn-link danger" @onclick="() => Remover(u)">Remover</button>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <div class="msg-erro">@erro</div>
+}
+@if (!string.IsNullOrEmpty(ok))
+{
+    <div class="msg-ok">@ok</div>
+}
+
+@code {
+    private List<UsuarioDto>? lista;
+    private bool carregando = true;
+    private string? erro;
+    private string? ok;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthState.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        carregando = true;
+        try { lista = await UsuarioApi.ListarAsync(); }
+        catch (Exception ex) { erro = $"Falha ao listar: {ex.Message}"; }
+        carregando = false;
+    }
+
+    private void Editar(int id) => Nav.NavigateTo($"/usuarios/{id}");
+
+    private async Task Remover(UsuarioDto u)
+    {
+        erro = null; ok = null;
+        var (sucesso, erroApi) = await UsuarioApi.RemoverAsync(u.Id);
+        if (!sucesso) { erro = erroApi ?? "Falha ao remover"; return; }
+        ok = $"Usuario {u.Login} removido";
+        await CarregarAsync();
+    }
+
+    private async Task ResetarSenha(UsuarioDto u)
+    {
+        erro = null; ok = null;
+        var (sucesso, erroApi) = await UsuarioApi.ResetarSenhaAsync(u.Id, new ResetarSenhaRequest("123456"));
+        if (!sucesso) { erro = erroApi ?? "Falha ao resetar"; return; }
+        ok = $"Senha de {u.Login} resetada para '123456'. Sera obrigado a trocar no proximo login.";
+    }
+}

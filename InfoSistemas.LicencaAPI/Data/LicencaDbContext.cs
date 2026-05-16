@@ -9,6 +9,7 @@ public class LicencaDbContext(DbContextOptions<LicencaDbContext> options) : DbCo
     public DbSet<Licenca>     Licencas     => Set<Licenca>();
     public DbSet<Dispositivo> Dispositivos => Set<Dispositivo>();
     public DbSet<Renovacao>   Renovacoes   => Set<Renovacao>();
+    public DbSet<Usuario>     Usuarios     => Set<Usuario>();
 
     protected override void OnModelCreating(ModelBuilder m)
     {
@@ -71,6 +72,18 @@ public class LicencaDbContext(DbContextOptions<LicencaDbContext> options) : DbCo
             e.HasKey(x => x.Id);
             e.Property(x => x.Responsavel).HasMaxLength(80);
             e.Property(x => x.Observacao).HasMaxLength(255);
+        });
+
+        // Usuario
+        m.Entity<Usuario>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Login).HasMaxLength(50).IsRequired();
+            e.Property(x => x.SenhaHash).HasMaxLength(255).IsRequired();
+            e.Property(x => x.Nome).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Email).HasMaxLength(150);
+            e.Property(x => x.Perfil).HasMaxLength(20).HasDefaultValue("Admin");
+            e.HasIndex(x => x.Login).IsUnique();
         });
     }
 }

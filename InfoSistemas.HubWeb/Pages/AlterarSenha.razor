@@ -1,0 +1,119 @@
+@page "/alterar-senha"
+@using InfoSistemas.HubWeb.DTOs
+@using InfoSistemas.HubWeb.Services
+@inject AuthState AuthState
+@inject UsuarioApiService UsuarioApi
+@inject NavigationManager Nav
+
+<PageTitle>Alterar Senha</PageTitle>
+
+<h2>Alterar Senha</h2>
+
+@if (AuthState.MustChangePassword)
+{
+    <div class="aviso">
+        Para sua seguranca, voce precisa alterar a senha padrao no primeiro acesso.
+    </div>
+}
+
+<div class="form-container" style="max-width:480px;">
+    <form @onsubmit="Salvar" @onsubmit:preventDefault>
+        <div class="form-group">
+            <label>Senha atual</label>
+            <input type="password" @bind="senhaAtual" @bind:event="oninput" disabled="@salvando"/>
+        </div>
+
+        <div class="form-group">
+            <label>Nova senha</label>
+            <input type="password" @bind="novaSenha" @bind:event="oninput" disabled="@salvando"/>
+            <small>Minimo 4 caracteres</small>
+        </div>
+
+        <div class="form-group">
+            <label>Confirmar nova senha</label>
+            <input type="password" @bind="confirmar" @bind:event="oninput" disabled="@salvando"/>
+        </div>
+
+        @if (!string.IsNullOrEmpty(erro))
+        {
+            <div class="msg-erro">@erro</div>
+        }
+        @if (!string.IsNullOrEmpty(ok))
+        {
+            <div class="msg-ok">@ok</div>
+        }
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary" disabled="@salvando">
+                @(salvando ? "Salvando..." : "Alterar Senha")
+            </button>
+        </div>
+    </form>
+</div>
+
+@code {
+    private string senhaAtual = "";
+    private string novaSenha = "";
+    private string confirmar = "";
+    private string? erro;
+    private string? ok;
+    private bool salvando;
+
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+        }
+    }
+
+    private async Task Salvar()
+    {
+        erro = null;
+        ok = null;
+
+        if (string.IsNullOrWhiteSpace(senhaAtual) ||
+            string.IsNullOrWhiteSpace(novaSenha) ||
+            string.IsNullOrWhiteSpace(confirmar))
+        {
+            erro = "Preencha todos os campos";
+            return;
+        }
+
+        if (novaSenha.Length < 4)
+        {
+            erro = "Nova senha deve ter no minimo 4 caracteres";
+            return;
+        }
+
+        if (novaSenha != confirmar)
+        {
+            erro = "A confirmacao nao confere com a nova senha";
+            return;
+        }
+
+        if (AuthState.Usuario == null)
+        {
+            erro = "Sessao expirada. Faca login novamente.";
+            return;
+        }
+
+        salvando = true;
+        var (sucesso, erroApi) = await UsuarioApi.AlterarSenhaAsync(
+            AuthState.Usuario.Id,
+            new AlterarSenhaRequest(senhaAtual, novaSenha));
+        salvando = false;
+
+        if (!sucesso)
+        {
+            erro = erroApi ?? "Falha ao alterar senha";
+            return;
+        }
+
+        AuthState.ClearTrocarSenha();
+        ok = "Senha alterada com sucesso!";
+
+        await Task.Delay(1200);
+        Nav.NavigateTo("/");
+    }
+}

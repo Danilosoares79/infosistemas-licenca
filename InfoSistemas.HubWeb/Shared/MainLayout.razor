@@ -1,27 +1,59 @@
 @inherits LayoutComponentBase
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>InfoSistemas Hub</title>
-    <link rel="stylesheet" href="css/hub.css"/>
-</head>
-<body>
-<div class="hub-layout">
-    <nav class="hub-nav">
-        <div class="hub-brand">
-            <span class="brand-icon">IS</span>
-            <span class="brand-name">InfoSistemas Hub</span>
-        </div>
-        <NavMenu />
-    </nav>
-    <main class="hub-main">
-        <div class="hub-content">
-            @Body
-        </div>
-    </main>
-</div>
-<script src="_framework/blazor.server.js"></script>
-</body>
-</html>
+@using InfoSistemas.HubWeb.Services
+@inject AuthState AuthState
+@inject NavigationManager Nav
+@implements IDisposable
+
+@if (!AuthState.IsAuthenticated)
+{
+    <div class="auth-loading">Redirecionando para login...</div>
+}
+else
+{
+    <div class="hub-layout">
+        <nav class="hub-nav">
+            <div class="hub-brand">
+                <span class="brand-icon">IS</span>
+                <span class="brand-name">InfoSistemas Hub</span>
+            </div>
+            <NavMenu />
+        </nav>
+        <main class="hub-main">
+            <div class="hub-content">
+                @Body
+            </div>
+        </main>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        AuthState.OnChange += StateHasChanged;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!AuthState.IsAuthenticated)
+        {
+            var uri = new Uri(Nav.Uri);
+            if (!uri.AbsolutePath.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
+            {
+                Nav.NavigateTo("/login");
+            }
+        }
+        else if (AuthState.MustChangePassword)
+        {
+            var uri = new Uri(Nav.Uri);
+            if (!uri.AbsolutePath.StartsWith("/alterar-senha", StringComparison.OrdinalIgnoreCase))
+            {
+                Nav.NavigateTo("/alterar-senha");
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= StateHasChanged;
+    }
+}
