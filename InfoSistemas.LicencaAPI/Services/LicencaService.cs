@@ -201,6 +201,28 @@ public class LicencaService(LicencaDbContext db, IConfiguration cfg)
         await db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Remove (desativa) os dispositivos excedentes apos diminuir o limite.
+    /// Remove os mais antigos (maior tempo sem acesso) primeiro, mantendo os N mais recentes.
+    /// </summary>
+    public async Task<int> RemoverDispositivosExcedentesAsync(int clienteId, string tipo, int novoLimite)
+    {
+        var dispositivos = await db.Dispositivos
+            .Where(d => d.ClienteId == clienteId && d.Tipo == tipo && d.Ativo)
+            .OrderByDescending(d => d.UltimoAcesso) // mais recentes primeiro
+            .ToListAsync();
+
+        // Manter os N mais recentes, remover os mais antigos
+        var excedentes = dispositivos.Skip(novoLimite).ToList();
+        foreach (var d in excedentes)
+            d.Ativo = false;
+
+        if (excedentes.Count > 0)
+            await db.SaveChangesAsync();
+
+        return excedentes.Count;
+    }
+
     public async Task<List<VencimentoAlertaDto>> VencimentosProximosAsync(int dias = 7)
     {
         var limite = DateTime.UtcNow.AddDays(dias);

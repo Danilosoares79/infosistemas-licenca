@@ -15,7 +15,24 @@ public class ClienteController(LicencaService svc, IConfiguration cfg) : Control
     [HttpPost("{id:int}/bloquear")] public async Task<IActionResult> Bloquear(int id, [FromBody] BloquearRequest req) { if (!Ok()) return Unauthorized(); await svc.BloquearAsync(id, req); return Ok(new { mensagem = "Cliente bloqueado." }); }
     [HttpPost("{id:int}/desbloquear")] public async Task<IActionResult> Desbloquear(int id) { if (!Ok()) return Unauthorized(); await svc.DesbloquearAsync(id); return Ok(new { mensagem = "Cliente desbloqueado." }); }
     [HttpPost("{id:int}/renovar")] public async Task<IActionResult> Renovar(int id, [FromBody] RenovarRequest req) { if (!Ok()) return Unauthorized(); return Ok(await svc.RenovarAsync(id, req)); }
-    [HttpGet("{id:int}/dispositivos")] public async Task<IActionResult> Dispositivos(int id) { if (!Ok()) return Unauthorized(); return Ok(await svc.ListarDispositivosAsync(id)); }
+    // DELETE /api/admin/clientes/{id}/dispositivos/{machineId}
+    [HttpDelete("{id:int}/dispositivos/{machineId}")]
+    public async Task<IActionResult> RemoverDispositivo(int id, string machineId)
+    {
+        if (!Ok()) return Unauthorized();
+        await svc.RemoverDispositivoAsync(id, machineId);
+        return NoContent();
+    }
+
+    // POST /api/admin/clientes/{id}/remover-dispositivos-excedentes
+    // Remove automaticamente os dispositivos alem do novo limite (os mais antigos primeiro)
+    [HttpPost("{id:int}/remover-dispositivos-excedentes")]
+    public async Task<IActionResult> RemoverExcedentes(int id, [FromBody] RemoverExcedentesRequest req)
+    {
+        if (!Ok()) return Unauthorized();
+        var removidos = await svc.RemoverDispositivosExcedentesAsync(id, req.Tipo, req.NovoLimite);
+        return Ok(new { removidos, mensagem = $"{removidos} dispositivo(s) removido(s)." });
+    }
     [HttpGet("/api/admin/vencimentos")] public async Task<IActionResult> Vencimentos([FromQuery] int dias = 7) { if (!Ok()) return Unauthorized(); return Ok(await svc.VencimentosProximosAsync(dias)); }
 
     // POST /api/admin/clientes/{id}/renovacao-automatica

@@ -43,3 +43,9 @@ public record AlterarSenhaRequest(
 public record ResetarSenhaRequest(
     string NovaSenha
 );
+
+// Para remover dispositivos excedentes ao diminuir o limite
+public record RemoverExcedentesRequest(
+    string Tipo,      // DESKTOP ou MOBILE
+    int NovoLimite    // novo limite a manter
+);

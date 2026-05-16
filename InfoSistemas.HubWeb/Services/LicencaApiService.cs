@@ -55,8 +55,21 @@ public class LicencaApiService(HttpClient http)
 
     public async Task RemoverDispositivoAsync(int clienteId, string machineId)
     {
-        var r = await http.DeleteAsync($"api/dispositivo/{clienteId}/{machineId}");
+        var r = await http.DeleteAsync($"api/admin/clientes/{clienteId}/dispositivos/{machineId}");
         r.EnsureSuccessStatusCode();
+    }
+
+    public async Task<(int Removidos, string? Mensagem)> RemoverExcedentesAsync(
+        int clienteId, string tipo, int novoLimite)
+    {
+        var r = await http.PostAsJsonAsync(
+            $"api/admin/clientes/{clienteId}/remover-dispositivos-excedentes",
+            new { Tipo = tipo, NovoLimite = novoLimite });
+        if (!r.IsSuccessStatusCode) return (0, "Erro ao remover");
+        var obj = await r.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+        var removidos = obj != null && obj.TryGetValue("removidos", out var v)
+            ? int.Parse(v?.ToString() ?? "0") : 0;
+        return (removidos, null);
     }
 
     public Task<List<VencimentoAlertaDto>?> VencimentosAsync(int dias = 7) =>
