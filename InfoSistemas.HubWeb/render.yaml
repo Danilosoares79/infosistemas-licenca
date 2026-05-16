@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: infosistemas-hubweb
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: LicencaApi__BaseUrl
+        value: https://infosistemas-licenca-production.up.railway.app
+      - key: LicencaApi__AdminKey
+        value: INFOSISTEMAS-ADMIN-KEY-2026
