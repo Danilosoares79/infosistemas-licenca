@@ -17,7 +17,6 @@ else
     <div class="hub-layout">
         <!-- Menu lateral -->
         <nav class="hub-nav @(menuAberto ? "hub-nav-aberto" : "")">
-            <!-- Logo InfoSistemas no topo -->
             <div class="hub-brand">
                 <img src="css/logo_infosistemas.jpg"
                      alt="InfoSistemas"
@@ -28,7 +27,7 @@ else
                     <span class="brand-name">InfoSistemas Hub</span>
                 </div>
             </div>
-            <NavMenu OnNavClick="FecharMenu" />
+            <NavMenu />
         </nav>
 
         <!-- Conteudo principal -->
@@ -59,10 +58,37 @@ else
 
     protected override void OnInitialized()
     {
-        AuthState.OnChange += StateHasChanged;
+        AuthState.OnChange += OnAuthStateChanged;
+        // Fechar o menu automaticamente quando a URL mudar
+        Nav.LocationChanged += OnLocationChanged;
+
+        // Redirecionar se nao autenticado
+        RedirecionarSeNecessario();
     }
 
-    protected override void OnAfterRender(bool firstRender)
+    private void OnAuthStateChanged()
+    {
+        InvokeAsync(() =>
+        {
+            RedirecionarSeNecessario();
+            StateHasChanged();
+        });
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        // Fechar menu ao navegar (util no mobile)
+        if (menuAberto)
+        {
+            InvokeAsync(() =>
+            {
+                menuAberto = false;
+                StateHasChanged();
+            });
+        }
+    }
+
+    private void RedirecionarSeNecessario()
     {
         if (!AuthState.IsAuthenticated)
         {
@@ -83,6 +109,7 @@ else
 
     public void Dispose()
     {
-        AuthState.OnChange -= StateHasChanged;
+        AuthState.OnChange -= OnAuthStateChanged;
+        Nav.LocationChanged -= OnLocationChanged;
     }
 }
