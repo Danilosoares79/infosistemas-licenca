@@ -10,22 +10,43 @@
 }
 else
 {
+    <!-- Overlay escuro (fecha o menu ao clicar fora no mobile) -->
+    <div class="nav-overlay @(menuAberto ? "nav-overlay-ativo" : "")"
+         @onclick="FecharMenu"></div>
+
     <div class="hub-layout">
-        <nav class="hub-nav">
+        <!-- Menu lateral -->
+        <nav class="hub-nav @(menuAberto ? "hub-nav-aberto" : "")">
             <!-- Logo InfoSistemas no topo -->
             <div class="hub-brand">
                 <img src="css/logo_infosistemas.jpg"
                      alt="InfoSistemas"
                      class="brand-logo"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
                 <div class="brand-fallback" style="display:none;">
                     <span class="brand-icon">IS</span>
                     <span class="brand-name">InfoSistemas Hub</span>
                 </div>
             </div>
-            <NavMenu />
+            <NavMenu OnNavClick="FecharMenu" />
         </nav>
+
+        <!-- Conteudo principal -->
         <main class="hub-main">
+            <!-- Topbar mobile: logo + hamburguer -->
+            <div class="mobile-topbar">
+                <div class="mobile-brand">
+                    <img src="css/logo_infosistemas.jpg" alt="IS" class="mobile-logo"
+                         onerror="this.style.display='none';"/>
+                    <span class="mobile-brand-name">InfoSistemas Hub</span>
+                </div>
+                <button class="hamburger" @onclick="ToggleMenu" aria-label="Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+
             <div class="hub-content">
                 @Body
             </div>
@@ -34,6 +55,8 @@ else
 }
 
 @code {
+    private bool menuAberto = false;
+
     protected override void OnInitialized()
     {
         AuthState.OnChange += StateHasChanged;
@@ -54,6 +77,9 @@ else
                 Nav.NavigateTo("/alterar-senha");
         }
     }
+
+    private void ToggleMenu() => menuAberto = !menuAberto;
+    private void FecharMenu() => menuAberto = false;
 
     public void Dispose()
     {

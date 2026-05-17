@@ -529,3 +529,203 @@ code.chave { display: inline-block; }
     color: var(--blue);
     font-weight: 600;
 }
+
+/* ============================================ */
+/*  RESPONSIVO — MOBILE / TABLET               */
+/* ============================================ */
+
+/* Topbar mobile: escondida no desktop */
+.mobile-topbar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    background: #1e293b;
+    color: #fff;
+    padding: 10px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
+
+.mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mobile-logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.mobile-brand-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #fff;
+}
+
+/* Botao hamburguer */
+.hamburger {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: center;
+    border-radius: 6px;
+    transition: background .15s;
+}
+.hamburger:hover { background: rgba(255,255,255,.1); }
+.hamburger span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: #fff;
+    border-radius: 2px;
+    transition: all .25s;
+}
+
+/* Overlay escuro (fecha o menu ao clicar fora) */
+.nav-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 149;
+    transition: opacity .25s;
+    opacity: 0;
+}
+.nav-overlay.nav-overlay-ativo {
+    display: block;
+    opacity: 1;
+}
+
+/* ── TABLET (max 1024px) ── */
+@media (max-width: 1024px) {
+    .hub-nav { width: 200px; }
+    .hub-content { padding: 20px 24px; }
+    .cards-row { grid-template-columns: repeat(2,1fr); gap: 12px; }
+    .brand-logo { width: 150px; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .perm-table th:nth-child(n+2),
+    .perm-table td:nth-child(n+2) { min-width: 70px; }
+}
+
+/* ── MOBILE (max 768px) ── */
+@media (max-width: 768px) {
+
+    /* Mostrar topbar mobile, esconder brand no nav */
+    .mobile-topbar { display: flex; }
+    .hub-brand { display: none; }
+
+    /* Layout: coluna unica */
+    .hub-layout { flex-direction: column; }
+
+    /* Menu lateral: fora da tela por padrao */
+    .hub-nav {
+        position: fixed;
+        top: 0;
+        left: -240px;
+        width: 240px;
+        height: 100vh;
+        z-index: 150;
+        transition: left .25s ease;
+        overflow-y: auto;
+    }
+
+    /* Menu aberto pelo hamburguer */
+    .hub-nav.hub-nav-aberto {
+        left: 0;
+        box-shadow: 4px 0 20px rgba(0,0,0,.3);
+    }
+
+    /* Conteudo: ocupa tela toda */
+    .hub-main { width: 100%; min-height: 100vh; }
+    .hub-content { padding: 16px; }
+
+    /* Cabecalho de pagina */
+    .page-header {
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+    .page-header h2 { font-size: 18px; }
+
+    /* Cards: 2 colunas no mobile */
+    .cards-row { grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 16px; }
+    .card { padding: 14px; }
+    .card-value { font-size: 26px; }
+
+    /* Tabelas: scroll horizontal */
+    .hub-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+    .hub-table th, .hub-table td { padding: 8px 10px; font-size: 13px; }
+
+    /* Formularios: coluna unica */
+    .form-row { flex-direction: column; gap: 10px; }
+    .form-group { min-width: 0; }
+    .form-card { padding: 16px; }
+    .form-section { padding-bottom: 16px; margin-bottom: 16px; }
+
+    /* Botoes de acao: full-width no mobile */
+    .form-actions { flex-direction: column; }
+    .form-actions .btn-primary,
+    .form-actions .btn-secondary,
+    .form-actions .btn-green,
+    .form-actions .btn-danger { width: 100%; text-align: center; }
+
+    /* Detail grid: 1 coluna */
+    .detail-grid { grid-template-columns: 1fr; gap: 12px; }
+
+    /* Radio labels: wrap */
+    .radio-label { font-size: 12px; padding: 5px 10px; }
+
+    /* Filtros: coluna */
+    .filtros { flex-direction: column; align-items: stretch; }
+    .filtros input, .filtros select { width: 100%; }
+
+    /* Secao */
+    .section { margin-top: 16px; }
+
+    /* Permissoes: scroll horizontal */
+    .permissoes-box { overflow-x: auto; padding: 10px; }
+    .perm-table { min-width: 380px; }
+
+    /* Login */
+    .login-card { padding: 28px 20px; }
+    .login-logo-img { width: 90px; height: 90px; }
+    .login-brand h1 { font-size: 18px; }
+
+    /* Alterar senha / usuario form */
+    .form-container { padding: 16px; }
+
+    /* Nav user no menu mobile: maior touch area */
+    .nav-item { padding: 14px 20px; font-size: 15px; }
+    .nav-user { padding: 16px 18px; }
+    .nav-user-name { font-size: 14px; }
+}
+
+/* ── MOBILE pequeno (max 480px) ── */
+@media (max-width: 480px) {
+    .cards-row { grid-template-columns: 1fr 1fr; }
+    .card-value { font-size: 22px; }
+    .card-label { font-size: 11px; }
+    .hub-content { padding: 12px; }
+    .page-header h2 { font-size: 16px; }
+    .hub-table th, .hub-table td { padding: 7px 8px; font-size: 12px; }
+    .badge { font-size: 10px; padding: 1px 6px; }
+    .btn-link { font-size: 12px; }
+    .chave { font-size: 10px; display: block; margin: 4px 0 0 0; }
+    dl { grid-template-columns: 100px 1fr; }
+    .login-card { padding: 24px 14px; }
+    .login-logo-img { width: 70px; height: 70px; }
+}
