@@ -18,40 +18,73 @@
 else
 {
     <div class="form-card">
-        <!-- DADOS DA EMPRESA -->
+        <!-- DADOS DA EMPRESA / PESSOA -->
         <div class="form-section">
-            <h3>Dados da Empresa</h3>
+            <h3>Dados do Cliente</h3>
+
+            <!-- Tipo: Pessoa Juridica ou Fisica -->
+            <div class="form-row" style="margin-bottom:10px;">
+                <div class="form-group">
+                    <label>Tipo de Cadastro</label>
+                    <div style="display:flex;gap:16px;margin-top:4px;">
+                        <label class="radio-label @(tipoPessoa == "J" ? "radio-ativo" : "")">
+                            <input type="radio" @onchange='() => MudarTipo("J")'
+                                   checked="@(tipoPessoa == "J")" disabled="@(salvando || Id > 0)"/>
+                            Pessoa Juridica (CNPJ)
+                        </label>
+                        <label class="radio-label @(tipoPessoa == "F" ? "radio-ativo" : "")">
+                            <input type="radio" @onchange='() => MudarTipo("F")'
+                                   checked="@(tipoPessoa == "F")" disabled="@(salvando || Id > 0)"/>
+                            Pessoa Fisica (CPF)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-row">
+                <!-- Documento: CNPJ ou CPF -->
                 <div class="form-group" style="max-width:220px;">
-                    <label>CNPJ *</label>
+                    <label>@(tipoPessoa == "J" ? "CNPJ *" : "CPF *")</label>
                     <div style="display:flex;gap:6px;align-items:center;">
-                        <input class="hub-input" @bind="cnpj" @bind:event="oninput"
-                               @onblur="BuscarCnpj"
-                               placeholder="00.000.000/0001-00"
-                               disabled="@(salvando || buscandoCnpj)"/>
-                        @if (buscandoCnpj)
+                        <input class="hub-input"
+                               @bind="documento" @bind:event="oninput"
+                               @onblur="AoSairDocumento"
+                               placeholder="@(tipoPessoa == "J" ? "00.000.000/0001-00" : "000.000.000-00")"
+                               maxlength="@(tipoPessoa == "J" ? 18 : 14)"
+                               disabled="@(salvando || buscando)"/>
+                        @if (buscando)
                         {
                             <span style="color:#6b7280;font-size:12px;white-space:nowrap;">Buscando...</span>
                         }
                     </div>
-                    @if (!string.IsNullOrEmpty(erroCnpj))
+                    @if (!string.IsNullOrEmpty(erroDocumento))
                     {
-                        <small style="color:#dc2626;">@erroCnpj</small>
+                        <small style="color:#dc2626;">@erroDocumento</small>
                     }
                     @if (cnpjEncontrado)
                     {
                         <small style="color:#15803d;">Dados preenchidos automaticamente!</small>
                     }
+                    @if (tipoPessoa == "F" && documentoValido)
+                    {
+                        <small style="color:#15803d;">CPF valido!</small>
+                    }
                 </div>
+
                 <div class="form-group flex-2">
-                    <label>Razao Social *</label>
-                    <input class="hub-input" @bind="razao" placeholder="Razao Social" disabled="@salvando"/>
+                    <label>@(tipoPessoa == "J" ? "Razao Social *" : "Nome Completo *")</label>
+                    <input class="hub-input" @bind="razao" placeholder="@(tipoPessoa == "J" ? "Razao Social" : "Nome Completo")" disabled="@salvando"/>
                 </div>
-                <div class="form-group flex-2">
-                    <label>Nome Fantasia</label>
-                    <input class="hub-input" @bind="fantasia" placeholder="Fantasia" disabled="@salvando"/>
-                </div>
+
+                @if (tipoPessoa == "J")
+                {
+                    <div class="form-group flex-2">
+                        <label>Nome Fantasia</label>
+                        <input class="hub-input" @bind="fantasia" placeholder="Fantasia" disabled="@salvando"/>
+                    </div>
+                }
             </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>E-mail</label>
@@ -62,6 +95,7 @@ else
                     <input class="hub-input" @bind="fone" placeholder="(00) 00000-0000" disabled="@salvando"/>
                 </div>
             </div>
+
             <div class="form-row">
                 <div class="form-group flex-3">
                     <label>Endereco</label>
@@ -103,24 +137,18 @@ else
                            style="width:80px" disabled="@salvando"/>
                     @if (Id > 0)
                     {
-                        <small>Ativos: <strong>@desktopsAtivos</strong> / Limite atual: <strong>@maxDesktopsOriginal</strong></small>
+                        <small>Ativos: <strong>@desktopsAtivos</strong> / Anterior: <strong>@maxDesktopsOriginal</strong></small>
                         @if (maxDesktops > maxDesktopsOriginal)
                         {
-                            <div class="limite-ok">
-                                +@(maxDesktops - maxDesktopsOriginal) PDV(s) adicionais poderão se conectar automaticamente.
-                            </div>
+                            <div class="limite-ok">+@(maxDesktops - maxDesktopsOriginal) PDV(s) adicionais poderão se conectar automaticamente.</div>
                         }
                         else if (maxDesktops < desktopsAtivos)
                         {
-                            <div class="limite-alerta">
-                                ⚠ @(desktopsAtivos - maxDesktops) Desktop(s) serao desconectados (os menos recentes).
-                            </div>
+                            <div class="limite-alerta">⚠ @(desktopsAtivos - maxDesktops) Desktop(s) serao desconectados (os menos recentes).</div>
                         }
                         else if (maxDesktops < maxDesktopsOriginal)
                         {
-                            <div class="limite-info">
-                                Novo limite: @maxDesktops Desktop(s). Nenhum ativo sera afetado.
-                            </div>
+                            <div class="limite-info">Novo limite: @maxDesktops Desktop(s). Nenhum ativo sera afetado.</div>
                         }
                     }
                     else
@@ -137,24 +165,18 @@ else
                            style="width:80px" disabled="@salvando"/>
                     @if (Id > 0)
                     {
-                        <small>Ativos: <strong>@mobileAtivos</strong> / Limite atual: <strong>@maxMobileOriginal</strong></small>
+                        <small>Ativos: <strong>@mobileAtivos</strong> / Anterior: <strong>@maxMobileOriginal</strong></small>
                         @if (maxMobile > maxMobileOriginal)
                         {
-                            <div class="limite-ok">
-                                +@(maxMobile - maxMobileOriginal) Garcom(ns) adicionais poderão se conectar automaticamente.
-                            </div>
+                            <div class="limite-ok">+@(maxMobile - maxMobileOriginal) Garcom(ns) adicionais poderão se conectar automaticamente.</div>
                         }
                         else if (maxMobile < mobileAtivos)
                         {
-                            <div class="limite-alerta">
-                                ⚠ @(mobileAtivos - maxMobile) Mobile(s) serao desconectados (os menos recentes).
-                            </div>
+                            <div class="limite-alerta">⚠ @(mobileAtivos - maxMobile) Mobile(s) serao desconectados (os menos recentes).</div>
                         }
                         else if (maxMobile < maxMobileOriginal)
                         {
-                            <div class="limite-info">
-                                Novo limite: @maxMobile Mobile(s). Nenhum ativo sera afetado.
-                            </div>
+                            <div class="limite-info">Novo limite: @maxMobile Mobile(s). Nenhum ativo sera afetado.</div>
                         }
                     }
                     else
@@ -169,35 +191,25 @@ else
                 </div>
             </div>
 
-            <!-- Aviso resumo quando há redução -->
             @if (Id > 0 && (maxDesktops < desktopsAtivos || maxMobile < mobileAtivos))
             {
                 <div class="reducao-aviso">
                     <strong>Atencao:</strong> Ao salvar, os dispositivos excedentes serao desconectados automaticamente.
                     O sistema remove os que tiveram acesso mais antigo, mantendo os mais recentes.
-                    Os dispositivos removidos nao poderao mais usar o sistema ate que voce aumente o limite novamente.
                 </div>
             }
 
-            <!-- Info quando só aumentou -->
             @if (Id > 0 && maxDesktops >= desktopsAtivos && maxMobile >= mobileAtivos
                  && (maxDesktops > maxDesktopsOriginal || maxMobile > maxMobileOriginal))
             {
                 <div class="reducao-info-aumento">
                     Os novos dispositivos podem se conectar imediatamente sem necessidade de novo arquivo .lic.
-                    A licenca e validada online automaticamente.
                 </div>
             }
         </div>
 
-        @if (!string.IsNullOrEmpty(erro))
-        {
-            <div class="alert alert-danger">@erro</div>
-        }
-        @if (!string.IsNullOrEmpty(sucesso))
-        {
-            <div class="alert alert-success">@sucesso</div>
-        }
+        @if (!string.IsNullOrEmpty(erro))   { <div class="alert alert-danger">@erro</div> }
+        @if (!string.IsNullOrEmpty(sucesso)) { <div class="alert alert-success">@sucesso</div> }
 
         <div class="form-actions">
             <button class="btn-secondary" @onclick='() => Nav.NavigateTo(Id > 0 ? $"/clientes/{Id}" : "/clientes")'>
@@ -213,20 +225,19 @@ else
 @code {
     [Parameter] public int Id { get; set; }
 
-    // Dados do formulário
-    string razao = "", fantasia = "", cnpj = "", email = "", fone = "";
+    // Tipo: J = Juridica (CNPJ) / F = Fisica (CPF)
+    string tipoPessoa = "J";
+    string documento = "", razao = "", fantasia = "", email = "", fone = "";
     string endereco = "", cidade = "", uf = "", cep = "";
     string plano = "PROFISSIONAL";
     int maxDesktops = 1, maxMobile = 0;
     DateTime vencimento = DateTime.Today.AddDays(30);
 
-    // Estado original (para comparar mudanças)
     int maxDesktopsOriginal = 1, maxMobileOriginal = 0;
     int desktopsAtivos = 0, mobileAtivos = 0;
 
-    // Feedback
-    string erro = "", sucesso = "", erroCnpj = "";
-    bool salvando, buscandoCnpj, cnpjEncontrado;
+    string erro = "", sucesso = "", erroDocumento = "";
+    bool salvando, buscando, cnpjEncontrado, documentoValido;
 
     protected override void OnInitialized()
     {
@@ -237,39 +248,92 @@ else
     {
         if (Id > 0)
         {
-            // Carregar dados do cliente
             var c = await Api.ObterClienteAsync(Id);
             if (c != null)
             {
-                razao              = c.RazaoSocial;
-                fantasia           = c.Fantasia;
-                cnpj               = c.Cnpj;
-                email              = c.Email;
-                plano              = c.Plano;
-                maxDesktops        = c.MaxDesktops;
+                documento           = c.Cnpj;
+                razao               = c.RazaoSocial;
+                fantasia            = c.Fantasia;
+                email               = c.Email;
+                plano               = c.Plano;
+                maxDesktops         = c.MaxDesktops;
                 maxDesktopsOriginal = c.MaxDesktops;
-                maxMobile          = c.MaxMobile;
-                maxMobileOriginal  = c.MaxMobile;
-                vencimento         = c.DataVencimento;
+                maxMobile           = c.MaxMobile;
+                maxMobileOriginal   = c.MaxMobile;
+                vencimento          = c.DataVencimento;
+                desktopsAtivos      = c.DesktopsAtivos;
+                mobileAtivos        = c.MobileAtivos;
 
-                // Quantos dispositivos estão ativos hoje
-                desktopsAtivos = c.DesktopsAtivos;
-                mobileAtivos   = c.MobileAtivos;
+                // Detectar tipo pelo tamanho do documento salvo
+                var digitos = Regex.Replace(c.Cnpj, @"[^\d]", "");
+                tipoPessoa = digitos.Length == 11 ? "F" : "J";
             }
         }
     }
 
-    // ── Auto-preenchimento via CNPJ (BrasilAPI) ───────────────────────
-    private async Task BuscarCnpj()
+    void MudarTipo(string tipo)
     {
-        erroCnpj = "";
+        tipoPessoa     = tipo;
+        documento      = "";
+        erroDocumento  = "";
         cnpjEncontrado = false;
-        var cnpjLimpo = Regex.Replace(cnpj, @"[^\d]", "");
-        if (cnpjLimpo.Length != 14) return;
+        documentoValido = false;
+    }
 
-        buscandoCnpj = true;
+    // ── Chamado ao sair do campo documento ────────────────────────────
+    private async Task AoSairDocumento()
+    {
+        erroDocumento   = "";
+        cnpjEncontrado  = false;
+        documentoValido = false;
+
+        var digitos = Regex.Replace(documento, @"[^\d]", "");
+
+        if (digitos.Length == 0) return;
+
+        if (tipoPessoa == "F")
+        {
+            // CPF: validar e formatar
+            if (digitos.Length != 11)
+            {
+                erroDocumento = "CPF invalido. Digite os 11 digitos.";
+                return;
+            }
+            if (!ValidarCpf(digitos))
+            {
+                erroDocumento = "CPF invalido. Verifique os digitos.";
+                return;
+            }
+            // Formatar CPF: 000.000.000-00
+            documento = $"{digitos[..3]}.{digitos[3..6]}.{digitos[6..9]}-{digitos[9..]}";
+            documentoValido = true;
+            // CPF nao tem API publica (privacidade/LGPD) — nao busca dados
+        }
+        else
+        {
+            // CNPJ: validar, formatar e buscar dados na Receita Federal
+            if (digitos.Length != 14)
+            {
+                erroDocumento = "CNPJ invalido. Digite os 14 digitos.";
+                return;
+            }
+            if (!ValidarCnpj(digitos))
+            {
+                erroDocumento = "CNPJ invalido. Verifique os digitos.";
+                return;
+            }
+            // Formatar CNPJ: 00.000.000/0001-00
+            documento = $"{digitos[..2]}.{digitos[2..5]}.{digitos[5..8]}/{digitos[8..12]}-{digitos[12..]}";
+
+            // Buscar dados na BrasilAPI
+            await BuscarCnpj(digitos);
+        }
+    }
+
+    private async Task BuscarCnpj(string cnpjLimpo)
+    {
+        buscando = true;
         StateHasChanged();
-
         try
         {
             var resp = await HttpFactory.CreateClient("brasilapi")
@@ -277,7 +341,7 @@ else
 
             if (!resp.IsSuccessStatusCode)
             {
-                erroCnpj = "CNPJ nao encontrado na Receita Federal.";
+                erroDocumento = "CNPJ nao encontrado na Receita Federal.";
                 return;
             }
 
@@ -297,7 +361,7 @@ else
             }
 
             var logradouro = dados.logradouro ?? "";
-            var numero     = dados.numero ?? "";
+            var numero     = dados.numero     ?? "";
             var comp       = dados.complemento ?? "";
             endereco = string.Join(", ", new[] { logradouro, numero, comp }
                 .Where(s => !string.IsNullOrWhiteSpace(s)));
@@ -308,41 +372,93 @@ else
                 ? Regex.Replace(dados.cep, @"(\d{5})(\d{3})", "$1-$2")
                 : cep;
 
-            if (cnpjLimpo.Length == 14)
-                cnpj = $"{cnpjLimpo[..2]}.{cnpjLimpo[2..5]}.{cnpjLimpo[5..8]}/{cnpjLimpo[8..12]}-{cnpjLimpo[12..]}";
-
-            cnpjEncontrado = true;
+            cnpjEncontrado  = true;
+            documentoValido = true;
         }
         catch
         {
-            erroCnpj = "Erro ao consultar CNPJ. Preencha os dados manualmente.";
+            erroDocumento = "Erro ao consultar CNPJ. Preencha os dados manualmente.";
         }
         finally
         {
-            buscandoCnpj = false;
+            buscando = false;
             StateHasChanged();
         }
     }
 
+    // ── Validação CPF ─────────────────────────────────────────────────
+    private static bool ValidarCpf(string cpf)
+    {
+        if (cpf.Distinct().Count() == 1) return false; // todos iguais (000.000.000-00)
+
+        // Calcula 1º dígito verificador
+        int soma = 0;
+        for (int i = 0; i < 9; i++) soma += int.Parse(cpf[i].ToString()) * (10 - i);
+        int resto = soma % 11;
+        int d1 = resto < 2 ? 0 : 11 - resto;
+        if (int.Parse(cpf[9].ToString()) != d1) return false;
+
+        // Calcula 2º dígito verificador
+        soma = 0;
+        for (int i = 0; i < 10; i++) soma += int.Parse(cpf[i].ToString()) * (11 - i);
+        resto = soma % 11;
+        int d2 = resto < 2 ? 0 : 11 - resto;
+        return int.Parse(cpf[10].ToString()) == d2;
+    }
+
+    // ── Validação CNPJ ────────────────────────────────────────────────
+    private static bool ValidarCnpj(string cnpj)
+    {
+        if (cnpj.Distinct().Count() == 1) return false;
+
+        int[] mult1 = { 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 };
+        int[] mult2 = { 6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 };
+
+        int soma = 0;
+        for (int i = 0; i < 12; i++) soma += int.Parse(cnpj[i].ToString()) * mult1[i];
+        int resto = soma % 11;
+        int d1 = resto < 2 ? 0 : 11 - resto;
+        if (int.Parse(cnpj[12].ToString()) != d1) return false;
+
+        soma = 0;
+        for (int i = 0; i < 13; i++) soma += int.Parse(cnpj[i].ToString()) * mult2[i];
+        resto = soma % 11;
+        int d2 = resto < 2 ? 0 : 11 - resto;
+        return int.Parse(cnpj[13].ToString()) == d2;
+    }
+
+    // ── Salvar ────────────────────────────────────────────────────────
     async Task Salvar()
     {
-        if (string.IsNullOrWhiteSpace(razao) || string.IsNullOrWhiteSpace(cnpj))
+        erro = "";
+        sucesso = "";
+
+        if (string.IsNullOrWhiteSpace(razao))
         {
-            erro = "Razao Social e CNPJ sao obrigatorios.";
-            return;
-        }
-        if (maxDesktops < 1)
-        {
-            erro = "Max. Desktops deve ser no minimo 1.";
+            erro = tipoPessoa == "J" ? "Razao Social e obrigatoria." : "Nome Completo e obrigatorio.";
             return;
         }
 
-        salvando = true; erro = ""; sucesso = "";
+        var digitos = Regex.Replace(documento, @"[^\d]", "");
+        if (tipoPessoa == "J" && digitos.Length != 14)
+        {
+            erro = "CNPJ invalido ou nao preenchido.";
+            return;
+        }
+        if (tipoPessoa == "F" && digitos.Length != 11)
+        {
+            erro = "CPF invalido ou nao preenchido.";
+            return;
+        }
+
+        if (maxDesktops < 1) { erro = "Max. Desktops deve ser no minimo 1."; return; }
+
+        salvando = true;
         try
         {
             if (Id == 0)
             {
-                var req = new CriarClienteRequest(razao, fantasia, cnpj, email, fone,
+                var req = new CriarClienteRequest(razao, fantasia, documento, email, fone,
                     endereco, cidade, uf, cep, plano, maxDesktops, maxMobile, vencimento);
                 var c = await Api.CriarClienteAsync(req);
                 sucesso = $"Cliente criado com sucesso! Chave de licenca: {c?.Chave}";
@@ -355,26 +471,20 @@ else
                     endereco, cidade, uf, cep, plano, maxDesktops, maxMobile);
                 await Api.AtualizarClienteAsync(Id, req);
 
-                // Remover dispositivos excedentes automaticamente se diminuiu o limite
                 var msgs = new List<string> { "Dados atualizados com sucesso!" };
 
                 if (maxDesktops < desktopsAtivos)
                 {
                     var (removidos, _) = await Api.RemoverExcedentesAsync(Id, "DESKTOP", maxDesktops);
-                    if (removidos > 0)
-                        msgs.Add($"{removidos} Desktop(s) desconectado(s) automaticamente.");
+                    if (removidos > 0) msgs.Add($"{removidos} Desktop(s) desconectado(s) automaticamente.");
                 }
-
                 if (maxMobile < mobileAtivos)
                 {
                     var (removidos, _) = await Api.RemoverExcedentesAsync(Id, "MOBILE", maxMobile);
-                    if (removidos > 0)
-                        msgs.Add($"{removidos} Mobile(s) desconectado(s) automaticamente.");
+                    if (removidos > 0) msgs.Add($"{removidos} Mobile(s) desconectado(s) automaticamente.");
                 }
 
                 sucesso = string.Join(" ", msgs);
-
-                // Atualizar contadores locais
                 maxDesktopsOriginal = maxDesktops;
                 maxMobileOriginal   = maxMobile;
                 desktopsAtivos      = Math.Min(desktopsAtivos, maxDesktops);
@@ -385,18 +495,18 @@ else
         finally { salvando = false; }
     }
 
-    // ── DTO para a resposta da BrasilAPI ─────────────────────────────
+    // ── DTO BrasilAPI ─────────────────────────────────────────────────
     private class BrasilApiCnpjDto
     {
-        public string? razao_social  { get; set; }
-        public string? nome_fantasia { get; set; }
-        public string? email         { get; set; }
+        public string? razao_social   { get; set; }
+        public string? nome_fantasia  { get; set; }
+        public string? email          { get; set; }
         public string? ddd_telefone_1 { get; set; }
-        public string? logradouro    { get; set; }
-        public string? numero        { get; set; }
-        public string? complemento   { get; set; }
-        public string? municipio     { get; set; }
-        public string? uf            { get; set; }
-        public string? cep           { get; set; }
+        public string? logradouro     { get; set; }
+        public string? numero         { get; set; }
+        public string? complemento    { get; set; }
+        public string? municipio      { get; set; }
+        public string? uf             { get; set; }
+        public string? cep            { get; set; }
     }
 }

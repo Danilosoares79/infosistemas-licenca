@@ -491,3 +491,41 @@ code.chave { display: inline-block; }
     font-size: 13px;
     color: var(--blue);
 }
+
+/* ============================================ */
+/*  TIPO DE PESSOA (CNPJ / CPF)                */
+/* ============================================ */
+
+.radio-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: border-color .15s, color .15s, background .15s;
+    user-select: none;
+}
+
+.radio-label input[type="radio"] {
+    accent-color: var(--blue);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+}
+
+.radio-label:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+}
+
+.radio-label.radio-ativo {
+    border-color: var(--blue);
+    background: var(--blue-light);
+    color: var(--blue);
+    font-weight: 600;
+}
