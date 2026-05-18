@@ -1,12 +1,18 @@
 @inherits LayoutComponentBase
 @using InfoSistemas.HubWeb.Services
+@using InfoSistemas.HubWeb.DTOs
 @inject AuthState AuthState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @implements IDisposable
 
-@if (!AuthState.IsAuthenticated)
+@if (carregando)
 {
     <div class="auth-loading">Carregando...</div>
+}
+else if (!AuthState.IsAuthenticated)
+{
+    <div class="auth-loading">Redirecionando...</div>
 }
 else
 {
@@ -44,30 +50,69 @@ else
 
 @code {
     private bool menuAberto = false;
+    private bool carregando = true;
 
     protected override void OnInitialized()
     {
         AuthState.OnChange += StateHasChanged;
     }
 
-    // OnAfterRender so e chamado apos o WebSocket conectar (nao durante pre-render)
-    // Por isso e seguro verificar autenticacao aqui — sem loop, sem conflito
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return; // executar apenas UMA vez
+        if (!firstRender) return;
+
+        // Se ja esta autenticado (ex: navLink soft navigation), nao precisa restaurar
+        if (!AuthState.IsAuthenticated)
+        {
+            await TentarRestaurarSessaoAsync();
+        }
+
+        carregando = false;
+
+        // Redirecionar se necessario
+        var uri = new Uri(Nav.Uri);
+        var path = uri.AbsolutePath;
 
         if (!AuthState.IsAuthenticated)
         {
-            var uri = new Uri(Nav.Uri);
-            if (!uri.AbsolutePath.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
+            if (!path.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
                 Nav.NavigateTo("/login");
         }
         else if (AuthState.MustChangePassword)
         {
-            var uri = new Uri(Nav.Uri);
-            if (!uri.AbsolutePath.StartsWith("/alterar-senha", StringComparison.OrdinalIgnoreCase))
+            if (!path.StartsWith("/alterar-senha", StringComparison.OrdinalIgnoreCase))
                 Nav.NavigateTo("/alterar-senha");
         }
+
+        StateHasChanged();
+    }
+
+    private async Task TentarRestaurarSessaoAsync()
+    {
+        try
+        {
+            // Primeiro tenta localStorage (lembrar de mim), depois sessionStorage
+            string? json = null;
+            try { json = await JS.InvokeAsync<string?>("localStorage.getItem", "is_sessao"); } catch { }
+            if (string.IsNullOrEmpty(json))
+            {
+                try { json = await JS.InvokeAsync<string?>("sessionStorage.getItem", "is_sessao"); } catch { }
+            }
+
+            if (!string.IsNullOrEmpty(json))
+            {
+                var sessao = System.Text.Json.JsonSerializer.Deserialize<SessaoSalva>(json);
+                if (sessao != null)
+                {
+                    var usuario = new UsuarioDto(
+                        sessao.Id, sessao.Login, sessao.Nome,
+                        sessao.Email, sessao.Perfil, sessao.Ativo,
+                        sessao.UltimoAcesso, sessao.DataCriacao);
+                    AuthState.SetUsuario(usuario, sessao.TrocarSenha);
+                }
+            }
+        }
+        catch { /* Falha silenciosa — usuario tera que logar novamente */ }
     }
 
     private void ToggleMenu() => menuAberto = !menuAberto;
@@ -77,4 +122,9 @@ else
     {
         AuthState.OnChange -= StateHasChanged;
     }
+
+    private record SessaoSalva(
+        int Id, string Login, string Nome, string? Email,
+        string Perfil, bool Ativo, DateTime? UltimoAcesso,
+        DateTime DataCriacao, bool TrocarSenha);
 }

@@ -1,5 +1,6 @@
 @using InfoSistemas.HubWeb.Services
 @inject AuthState AuthState
+@inject IJSRuntime JS
 @implements IDisposable
 
 <nav class="nav-menu">
@@ -45,8 +46,16 @@
     protected override void OnInitialized() => AuthState.OnChange += StateHasChanged;
     public void Dispose() => AuthState.OnChange -= StateHasChanged;
 
-    private void Sair()
+    private async Task Sair()
     {
+        // Limpar sessao salva no browser
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.removeItem", "is_sessao");
+            await JS.InvokeVoidAsync("sessionStorage.removeItem", "is_sessao");
+        }
+        catch { }
+
         AuthState.Logout();
         Nav.NavigateTo("/login", forceLoad: true);
     }

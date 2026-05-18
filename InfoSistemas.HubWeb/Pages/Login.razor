@@ -5,18 +5,17 @@
 @inject AuthApiService AuthApi
 @inject AuthState AuthState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>Login - InfoSistemas Hub</PageTitle>
 
 <div class="login-bg">
     <div class="login-card">
         <div class="login-brand">
-            <!-- Logo real da InfoSistemas -->
             <img src="css/logo_infosistemas.jpg"
                  alt="InfoSistemas"
                  class="login-logo-img"
                  onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='inline-flex';" />
-            <!-- Fallback se a imagem nao carregar -->
             <div class="login-logo" id="logo-fallback" style="display:none;">IS</div>
             <h1>InfoSistemas Hub</h1>
             <p class="login-subtitle">Sistema de Gerenciamento de Licencas</p>
@@ -27,12 +26,10 @@
                 <label>Login</label>
                 <input type="text" @bind="login" @bind:event="oninput" autofocus disabled="@loading"/>
             </div>
-
             <div class="login-field">
                 <label>Senha</label>
                 <input type="password" @bind="senha" @bind:event="oninput" disabled="@loading"/>
             </div>
-
             <div class="login-field-check">
                 <label>
                     <input type="checkbox" @bind="lembrar" disabled="@loading"/>
@@ -85,9 +82,38 @@
 
         AuthState.SetUsuario(resp.Usuario, resp.TrocarSenha);
 
+        // Salvar sessao no browser para sobreviver a F5 / hard navigation
+        await SalvarSessaoAsync(resp.Usuario, resp.TrocarSenha, lembrar);
+
         if (resp.TrocarSenha)
             Nav.NavigateTo("/alterar-senha");
         else
             Nav.NavigateTo("/");
     }
+
+    private async Task SalvarSessaoAsync(UsuarioDto usuario, bool trocarSenha, bool persistente)
+    {
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new SessaoSalva(
+                usuario.Id, usuario.Login, usuario.Nome,
+                usuario.Email, usuario.Perfil, usuario.Ativo,
+                usuario.UltimoAcesso, usuario.DataCriacao, trocarSenha));
+
+            // sessionStorage: dura ate fechar o browser
+            await JS.InvokeVoidAsync("sessionStorage.setItem", "is_sessao", json);
+
+            // localStorage: persiste entre sessoes (so se marcou "lembrar de mim")
+            if (persistente)
+                await JS.InvokeVoidAsync("localStorage.setItem", "is_sessao", json);
+            else
+                await JS.InvokeVoidAsync("localStorage.removeItem", "is_sessao");
+        }
+        catch { /* JS pode nao estar disponivel ainda */ }
+    }
+
+    public record SessaoSalva(
+        int Id, string Login, string Nome, string? Email,
+        string Perfil, bool Ativo, DateTime? UltimoAcesso,
+        DateTime DataCriacao, bool TrocarSenha);
 }
