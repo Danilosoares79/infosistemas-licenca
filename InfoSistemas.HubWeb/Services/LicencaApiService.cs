@@ -44,6 +44,14 @@ public class LicencaApiService(HttpClient http)
         return await r.Content.ReadFromJsonAsync<RenovacaoDto>();
     }
 
+    public async Task AlterarVencimentoAsync(int id, DateTime novaData, string? responsavel = null)
+    {
+        var r = await http.PostAsJsonAsync(
+            $"api/admin/clientes/{id}/alterar-vencimento",
+            new { NovaData = novaData, Responsavel = responsavel });
+        r.EnsureSuccessStatusCode();
+    }
+
     public async Task AtualizarRenovacaoAutomaticaAsync(int id, bool ativo)
     {
         var r = await http.PostAsJsonAsync($"api/admin/clientes/{id}/renovacao-automatica", ativo);

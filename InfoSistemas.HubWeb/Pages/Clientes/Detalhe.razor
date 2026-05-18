@@ -47,7 +47,7 @@ else
             <h3>Acoes</h3>
 
             <!-- Renovar -->
-            @if (cliente.Status != "BLOQUEADO")
+            @if (AuthState.CanRenovar)
             {
                 <div class="action-section">
                     <h4>Renovar Licenca</h4>
@@ -59,6 +59,27 @@ else
                     <button class="btn-green" @onclick="Renovar" disabled="@processando">
                         Renovar +@diasRenovar dias
                     </button>
+                </div>
+
+                <!-- Alterar Vencimento -->
+                <div class="action-section">
+                    <h4>Alterar Data de Vencimento</h4>
+                    <p class="text-muted" style="font-size:12px;margin-bottom:8px;">
+                        Define uma data especifica de vencimento (independente da data atual).
+                    </p>
+                    <div class="form-row" style="align-items:flex-end;gap:10px;flex-wrap:wrap;">
+                        <div class="form-group" style="margin:0;">
+                            <label style="font-size:12px;color:#6b7280;">Nova data</label>
+                            <input class="hub-input" type="date" @bind="novaDataVencimento" style="width:160px"/>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label style="font-size:12px;color:#6b7280;">Responsavel</label>
+                            <input class="hub-input" @bind="respAlterarVenc" placeholder="Quem alterou" style="width:150px"/>
+                        </div>
+                        <button class="btn-secondary" @onclick="AlterarVencimento" disabled="@processando">
+                            Salvar Data
+                        </button>
+                    </div>
                 </div>
             }
 
@@ -230,6 +251,10 @@ else
     string responsavelRenovar = "", motivoBloqueio = "", mensagem = "";
     bool processando, erro, renovacaoAutomatica;
 
+    // Alterar vencimento
+    DateTime novaDataVencimento = DateTime.Today.AddDays(30);
+    string respAlterarVenc = "";
+
     // Pagamento form
     decimal pgValor; DateTime pgData = DateTime.Today;
     string pgForma = "PIX", pgObs = "", pgResponsavel = "";
@@ -246,14 +271,31 @@ else
         cliente      = await Api.ObterClienteAsync(Id);
         dispositivos = await Api.ListarDispositivosAsync(Id) ?? [];
         pagamentos   = await Api.ListarPagamentosAsync(Id) ?? [];
-        // RenovacaoAutomatica nao vem no ClienteResumoDto - precisamos de endpoint separado
-        // Por ora, inicializa como false (pode ser melhorado depois)
+        // Inicializar data de vencimento com a data atual do cliente
+        if (cliente != null)
+            novaDataVencimento = cliente.DataVencimento;
     }
 
     async Task Renovar()
     {
         processando = true; mensagem = ""; erro = false;
         try { await Api.RenovarAsync(Id, new RenovarRequest(diasRenovar, responsavelRenovar, "")); mensagem = $"Licenca renovada por {diasRenovar} dias!"; await Carregar(); }
+        catch (Exception ex) { mensagem = $"Erro: {ex.Message}"; erro = true; }
+        finally { processando = false; }
+    }
+
+    async Task AlterarVencimento()
+    {
+        if (novaDataVencimento == default || novaDataVencimento.Year < 2020)
+        { mensagem = "Informe uma data valida."; erro = true; return; }
+        processando = true; mensagem = ""; erro = false;
+        try
+        {
+            await Api.AlterarVencimentoAsync(Id, novaDataVencimento,
+                string.IsNullOrWhiteSpace(respAlterarVenc) ? null : respAlterarVenc);
+            mensagem = $"Vencimento alterado para {novaDataVencimento:dd/MM/yyyy}!";
+            await Carregar();
+        }
         catch (Exception ex) { mensagem = $"Erro: {ex.Message}"; erro = true; }
         finally { processando = false; }
     }

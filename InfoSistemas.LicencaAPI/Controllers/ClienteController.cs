@@ -62,6 +62,16 @@ public class ClienteController(LicencaService svc, IConfiguration cfg) : Control
         return Ok(await svc.RenovarAsync(id, req));
     }
 
+    // POST /api/admin/clientes/{id}/alterar-vencimento
+    // Altera a data de vencimento para uma data especifica (sem calcular dias)
+    [HttpPost("{id:int}/alterar-vencimento")]
+    public async Task<IActionResult> AlterarVencimento(int id, [FromBody] AlterarVencimentoRequest req)
+    {
+        if (!Ok()) return Unauthorized();
+        await svc.AlterarVencimentoAsync(id, req);
+        return Ok(new { mensagem = $"Vencimento alterado para {req.NovaData:dd/MM/yyyy}." });
+    }
+
     // ← ENDPOINT QUE ESTAVA FALTANDO E CAUSAVA O TRAVAMENTO
     [HttpGet("{id:int}/dispositivos")]
     public async Task<IActionResult> Dispositivos(int id)

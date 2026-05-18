@@ -46,6 +46,12 @@ public record ResetarSenhaRequest(
 
 // Para remover dispositivos excedentes ao diminuir o limite
 public record RemoverExcedentesRequest(
-    string Tipo,      // DESKTOP ou MOBILE
-    int NovoLimite    // novo limite a manter
+    string Tipo,
+    int NovoLimite
+);
+
+// Para alterar a data de vencimento diretamente
+public record AlterarVencimentoRequest(
+    DateTime NovaData,
+    string? Responsavel
 );

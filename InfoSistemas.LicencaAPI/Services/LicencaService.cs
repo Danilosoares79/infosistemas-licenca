@@ -179,6 +179,36 @@ public class LicencaService(LicencaDbContext db, IConfiguration cfg)
         return new RenovacaoDto(r.Id, dataAnterior, dataNova, req.Dias, req.Responsavel, req.Observacao, r.CriadaEm);
     }
 
+    public async Task AlterarVencimentoAsync(int id, AlterarVencimentoRequest req)
+    {
+        var c = await db.Clientes.FindAsync(id) ?? throw new Exception("Cliente nao encontrado.");
+        var dataAnterior = c.DataVencimento;
+        var dataNova = DateTime.SpecifyKind(req.NovaData.Date, DateTimeKind.Utc);
+        c.DataVencimento = dataNova;
+        c.AtualizadoEm = DateTime.UtcNow;
+
+        // Se a nova data eh futura, reativar caso esteja expirado
+        if (dataNova > DateTime.UtcNow && c.Status == "EXPIRADO")
+        {
+            c.Status = "ATIVO";
+            c.MotivoBloqueio = null;
+        }
+
+        // Registrar como renovacao para historico
+        var dias = (int)(dataNova.Date - dataAnterior.Date).TotalDays;
+        db.Renovacoes.Add(new Renovacao
+        {
+            ClienteId      = id,
+            DataAnterior   = dataAnterior,
+            DataNova       = dataNova,
+            DiasAdicionados = dias,
+            Responsavel    = req.Responsavel ?? "Admin",
+            Observacao     = $"Vencimento alterado manualmente para {dataNova:dd/MM/yyyy}"
+        });
+
+        await db.SaveChangesAsync();
+    }
+
     public async Task AtualizarRenovacaoAutomaticaAsync(int id, bool ativo)
     {
         var c = await db.Clientes.FindAsync(id) ?? throw new Exception("Cliente nao encontrado.");
