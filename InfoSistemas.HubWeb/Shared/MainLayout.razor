@@ -6,21 +6,17 @@
 
 @if (!AuthState.IsAuthenticated)
 {
-    <div class="auth-loading">Redirecionando para login...</div>
+    <div class="auth-loading">Carregando...</div>
 }
 else
 {
-    <!-- Overlay escuro (fecha o menu ao clicar fora no mobile) -->
     <div class="nav-overlay @(menuAberto ? "nav-overlay-ativo" : "")"
          @onclick="FecharMenu"></div>
 
     <div class="hub-layout">
-        <!-- Menu lateral -->
         <nav class="hub-nav @(menuAberto ? "hub-nav-aberto" : "")">
             <div class="hub-brand">
-                <img src="css/logo_infosistemas.jpg"
-                     alt="InfoSistemas"
-                     class="brand-logo"
+                <img src="css/logo_infosistemas.jpg" alt="InfoSistemas" class="brand-logo"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
                 <div class="brand-fallback" style="display:none;">
                     <span class="brand-icon">IS</span>
@@ -30,9 +26,7 @@ else
             <NavMenu />
         </nav>
 
-        <!-- Conteudo principal -->
         <main class="hub-main">
-            <!-- Topbar mobile: logo + hamburguer -->
             <div class="mobile-topbar">
                 <div class="mobile-brand">
                     <img src="css/logo_infosistemas.jpg" alt="IS" class="mobile-logo"
@@ -40,15 +34,10 @@ else
                     <span class="mobile-brand-name">InfoSistemas Hub</span>
                 </div>
                 <button class="hamburger" @onclick="ToggleMenu" aria-label="Menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                    <span></span><span></span><span></span>
                 </button>
             </div>
-
-            <div class="hub-content">
-                @Body
-            </div>
+            <div class="hub-content">@Body</div>
         </main>
     </div>
 }
@@ -58,38 +47,15 @@ else
 
     protected override void OnInitialized()
     {
-        AuthState.OnChange += OnAuthStateChanged;
-        // Fechar o menu automaticamente quando a URL mudar
-        Nav.LocationChanged += OnLocationChanged;
-
-        // Redirecionar se nao autenticado
-        RedirecionarSeNecessario();
+        AuthState.OnChange += StateHasChanged;
     }
 
-    private void OnAuthStateChanged()
+    // OnAfterRender so e chamado apos o WebSocket conectar (nao durante pre-render)
+    // Por isso e seguro verificar autenticacao aqui — sem loop, sem conflito
+    protected override void OnAfterRender(bool firstRender)
     {
-        InvokeAsync(() =>
-        {
-            RedirecionarSeNecessario();
-            StateHasChanged();
-        });
-    }
+        if (!firstRender) return; // executar apenas UMA vez
 
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-    {
-        // Fechar menu ao navegar (util no mobile)
-        if (menuAberto)
-        {
-            InvokeAsync(() =>
-            {
-                menuAberto = false;
-                StateHasChanged();
-            });
-        }
-    }
-
-    private void RedirecionarSeNecessario()
-    {
         if (!AuthState.IsAuthenticated)
         {
             var uri = new Uri(Nav.Uri);
@@ -105,11 +71,10 @@ else
     }
 
     private void ToggleMenu() => menuAberto = !menuAberto;
-    private void FecharMenu() => menuAberto = false;
+    private void FecharMenu()  => menuAberto = false;
 
     public void Dispose()
     {
-        AuthState.OnChange -= OnAuthStateChanged;
-        Nav.LocationChanged -= OnLocationChanged;
+        AuthState.OnChange -= StateHasChanged;
     }
 }
