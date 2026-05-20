@@ -347,6 +347,7 @@ public class LicencaService(LicencaDbContext db, IConfiguration cfg)
         {
             chave           = cliente.Licenca?.Chave ?? "",
             razaoSocial     = cliente.RazaoSocial,
+            fantasia        = cliente.Fantasia ?? cliente.RazaoSocial,
             cnpj            = cliente.Cnpj,
             plano           = cliente.Plano,
             maxDesktops     = cliente.MaxDesktops,
@@ -354,7 +355,12 @@ public class LicencaService(LicencaDbContext db, IConfiguration cfg)
             dataVencimento  = cliente.DataVencimento.ToString("yyyy-MM-dd"),
             emitidoEm       = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             activationToken = activationToken,  // TOKEN UNICO - uso unico!
-            versao          = "3"
+            versao          = "3",
+            fone            = cliente.Fone ?? "",
+            email           = cliente.Email ?? "",
+            endereco        = cliente.Endereco ?? "",
+            cidade          = cliente.Cidade ?? "",
+            uf              = cliente.Uf ?? ""
         };
 
         var json       = JsonSerializer.Serialize(payload);
